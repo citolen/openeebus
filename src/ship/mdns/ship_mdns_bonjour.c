@@ -604,8 +604,7 @@ void MdnsResolveServiceCallback(
 
   const uint16_t port = OpaquePortToUint16(opaque_port);
 
-  MDNS_DEBUG_PRINTF(" can be reached at %s:%u (interface %u)\n", host, port, iface);
-  MDNS_DEBUG_PRINTF(", flags: %X\n", flags);
+  MDNS_DEBUG_PRINTF(" can be reached at %s:%u (interface %u), flags: %X\n", host, port, iface, flags);
 
   Mdns* const mdns = resolve->owner;
 
@@ -783,6 +782,7 @@ void* MdnsBrowserLoop(void* parameters) {
     MdnsProcessBrowseResults(mdns);
     MdnsProcessResolveResults(mdns);
 
+    MDNS_DEBUG_PRINTF("Number of found entries: %zu\n", VectorGetSize(mdns->found_entries));
     mdns->on_entries_found_cb(mdns->found_entries, mdns->context);
 
     MdnsSleepRandomInterval(mdns);
