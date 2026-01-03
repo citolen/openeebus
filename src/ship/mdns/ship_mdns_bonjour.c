@@ -114,6 +114,19 @@ static const struct timeval select_timeout = {
 
 typedef struct Mdns Mdns;
 
+typedef struct ActiveResolveEntry ActiveResolveEntry;
+/** Tracks a single pending DNSServiceResolve call */
+struct ActiveResolveEntry {
+  /** The DNSServiceRef for this resolve */
+  DNSServiceRef service_ref;
+  /** The MdnsEntry being resolved */
+  MdnsEntry* entry;
+  /** The owning Mdns instance */
+  Mdns* owner;
+  /** Whether the resolve is done */
+  bool done;
+};
+
 struct Mdns {
   /** Implements the Mdns Interface */
   ShipMdnsObject obj;
@@ -130,6 +143,7 @@ struct Mdns {
   EebusThreadObject* thread;
   DNSServiceRef dns_service_browser_ref;
   DNSServiceRef dns_service_register_ref;
+  Vector* active_resolves;
   Vector* found_entries;
   pthread_cond_t mdns_browse_cond;
   pthread_mutex_t mdns_browse_mutex;
@@ -178,8 +192,9 @@ static void MdnsConstruct(
     OnMdnsEntriesFoundCallback cb,
     void* ctx
 );
-
-static void MdnsProcessResults(Mdns* self);
+static ActiveResolveEntry* MdnsActiveResolveEntryCreate(Mdns* owner, MdnsEntry* entry);
+static void MdnsActiveResolveEntryDestroy(ActiveResolveEntry* resolve);
+static void MdnsActiveResolveEntryDeallocator(void* resolve);
 static inline uint16_t OpaquePortToUint16(uint16_t opaque_port);
 static void MdnsResolveServiceCallback(
     DNSServiceRef service_ref,
@@ -243,6 +258,7 @@ void MdnsConstruct(
   self->dns_service_browser_ref  = NULL;
   self->dns_service_register_ref = NULL;
   self->found_entries            = VectorCreateWithDeallocator(MdnsEntryDeallocator);
+  self->active_resolves          = VectorCreateWithDeallocator(MdnsActiveResolveEntryDeallocator);
 
   pthread_cond_init(&self->mdns_browse_cond, NULL);
   pthread_mutex_init(&self->mdns_browse_mutex, NULL);
@@ -273,6 +289,43 @@ ShipMdnsObject* ShipMdnsCreate(
   return SHIP_MDNS_OBJECT(mdns);
 }
 
+static ActiveResolveEntry* MdnsActiveResolveEntryCreate(Mdns* owner, MdnsEntry* entry) {
+  ActiveResolveEntry* const resolve = (ActiveResolveEntry*)EEBUS_MALLOC(sizeof(ActiveResolveEntry));
+  if (resolve == NULL) {
+    return NULL;
+  }
+
+  resolve->service_ref = NULL;
+  resolve->entry       = entry;
+  resolve->owner       = owner;
+  resolve->done        = false;
+
+  return resolve;
+}
+
+static void MdnsActiveResolveEntryDestroy(ActiveResolveEntry* resolve) {
+  if (resolve == NULL) {
+    return;
+  }
+
+  if (resolve->service_ref != NULL) {
+    DNSServiceRefDeallocate(resolve->service_ref);
+    resolve->service_ref = NULL;
+  }
+
+  if (resolve->entry != NULL) {
+    MdnsEntryDelete(resolve->entry);
+    resolve->entry = NULL;
+  }
+
+  EEBUS_FREE(resolve);
+}
+
+void MdnsActiveResolveEntryDeallocator(void* resolve) {
+  MdnsActiveResolveEntryDestroy((ActiveResolveEntry*)resolve);
+}
+
+
 void MdnsBrowserReset(Mdns* mdns) {
   if (mdns->dns_service_browser_ref != NULL) {
     DNSServiceRefDeallocate(mdns->dns_service_browser_ref);
@@ -282,6 +335,11 @@ void MdnsBrowserReset(Mdns* mdns) {
   if (mdns->found_entries != NULL) {
     VectorFreeElements(mdns->found_entries);
     VectorClear(mdns->found_entries);
+  }
+
+  if (mdns->active_resolves != NULL) {
+    VectorFreeElements(mdns->active_resolves);
+    VectorClear(mdns->active_resolves);
   }
 }
 
@@ -301,6 +359,13 @@ void Destruct(ShipMdnsObject* self) {
     VectorDestruct(mdns->found_entries);
     EEBUS_FREE(mdns->found_entries);
     mdns->found_entries = NULL;
+  }
+
+  if (mdns->active_resolves != NULL) {
+    VectorFreeElements(mdns->active_resolves);
+    VectorDestruct(mdns->active_resolves);
+    EEBUS_FREE(mdns->active_resolves);
+    mdns->active_resolves = NULL;
   }
 
   pthread_mutex_destroy(&mdns->mdns_browse_mutex);
