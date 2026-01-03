@@ -83,6 +83,7 @@
 #endif
 #include <dns_sd.h>
 #include <pthread.h>
+#include <string.h>
 #include <time.h>
 
 #include "src/common/debug.h"
@@ -90,6 +91,7 @@
 #include "src/common/eebus_device_info.h"
 #include "src/common/eebus_thread/eebus_thread.h"
 #include "src/common/vector.h"
+#include "src/ship/api/mdns_entry.h"
 #include "src/ship/api/ship_mdns_interface.h"
 #include "src/ship/ship_connection/types.h"
 
