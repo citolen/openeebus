@@ -15,6 +15,10 @@ endif()
 
 project(${TESTS_NAME} LANGUAGES C CXX)
 
+if(CMAKE_CROSSCOMPILING)
+  set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
+endif()
+
 include(GoogleTest)
 include(GNUInstallDirs)
 

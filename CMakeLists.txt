@@ -70,6 +70,21 @@ if(WIN32)
 endif()
 
 find_package(libwebsockets CONFIG REQUIRED)
+
+# Pick the correct libwebsockets target depending on how it was built
+set(LIBWEBSOCKETS_TARGET "")
+if(TARGET websockets_shared)
+  set(LIBWEBSOCKETS_TARGET websockets_shared)
+elseif(TARGET websockets)
+  set(LIBWEBSOCKETS_TARGET websockets)
+elseif(TARGET libwebsockets::websockets_shared)
+  set(LIBWEBSOCKETS_TARGET libwebsockets::websockets_shared)
+elseif(TARGET libwebsockets::websockets)
+  set(LIBWEBSOCKETS_TARGET libwebsockets::websockets)
+else()
+  message(FATAL_ERROR "libwebsockets found, but no known CMake target exists (websockets/websockets_shared).")
+endif()
+
 find_package(OpenSSL REQUIRED)
 find_package(cJSON REQUIRED)
 
@@ -139,7 +154,7 @@ target_link_libraries(
   PRIVATE
     ${THREAD_LIBRARY}
     cjson
-    websockets_shared
+    ${LIBWEBSOCKETS_TARGET}
     ${LIBWEBSOCKETS_DEP_LIBS}
     ${DNS_SD_LIB}
     ${OPEN_SSL_LIBRARIES}
