@@ -163,6 +163,11 @@ EebusError AddMpc(Hpsrv* self, DeviceLocalObject* device_local, EntityLocalObjec
     return kEebusErrorInit;
   }
 
+  EebusError err = HpsrvSetPowerTotal(HPSRV_OBJECT(self), 0);
+  if (err != kEebusErrorOk) {
+    return err;
+  }
+
   return kEebusErrorOk;
 }
 
