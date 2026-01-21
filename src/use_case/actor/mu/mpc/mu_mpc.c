@@ -180,7 +180,6 @@ void AddFeatures(UseCaseObject* self, EntityLocalObject* entity) {
   FeatureLocalObject* const mfl
       = ENTITY_LOCAL_ADD_FEATURE_WITH_TYPE_AND_ROLE(entity, kFeatureTypeTypeMeasurement, kRoleTypeServer);
   FEATURE_LOCAL_SET_FUNCTION_OPERATIONS(mfl, kFunctionTypeMeasurementDescriptionListData, true, false);
-  FEATURE_LOCAL_SET_FUNCTION_OPERATIONS(mfl, kFunctionTypeMeasurementConstraintsListData, true, false);
   FEATURE_LOCAL_SET_FUNCTION_OPERATIONS(mfl, kFunctionTypeMeasurementListData, true, false);
 
   MeasurementServer msrv;
@@ -223,7 +222,11 @@ void AddFeatures(UseCaseObject* self, EntityLocalObject* entity) {
     }
   }
 
-  MeasurementServerUpdateMeasurementConstraints(&msrv, measurement_constraints, NULL, NULL);
+  if (measurement_constraints->measurement_constraints_data_size != 0) {
+    FEATURE_LOCAL_SET_FUNCTION_OPERATIONS(mfl, kFunctionTypeMeasurementConstraintsListData, true, false);
+    MeasurementServerUpdateMeasurementConstraints(&msrv, measurement_constraints, NULL, NULL);
+  }
+
   MeasurementConstraintsDelete(measurement_constraints);
 }
 
