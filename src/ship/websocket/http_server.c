@@ -164,6 +164,11 @@ void Destruct(HttpServerObject* self) {
     lws_context_destroy(srv->lws_ctx);
     srv->lws_ctx = NULL;
   }
+
+  if (srv->mutex != NULL) {
+    EebusMutexDelete(srv->mutex);
+    srv->mutex = NULL;
+  }
 }
 
 void HttpServerStaggerCallback(lws_sorted_usec_list_t* sul) {
