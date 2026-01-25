@@ -214,6 +214,12 @@ void Destruct(ServiceReaderObject* self) {
   EgLpcListenerDelete(hems->eg_lpc_listener);
   hems->eg_lpc_listener = NULL;
 
+  MaMpcUseCaseDelete(hems->ma_mpc);
+  hems->ma_mpc = NULL;
+
+  MaMpcListenerDelete(hems->ma_mpc_listener);
+  hems->ma_mpc_listener = NULL;
+
   EebusServiceConfigDelete(hems->cfg);
 }
 
