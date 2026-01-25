@@ -179,6 +179,12 @@ EebusError HpsrvStart(Hpsrv* hpsrv, int32_t port, const char* role, TlsCertifica
   EebusServiceConfigSetAlternateIdentifier(hpsrv->cfg, "NIBE-HeatPump-123456789");
 
   hpsrv->service = EebusServiceCreate(hpsrv->cfg, role, tls_certificate, SERVICE_READER_OBJECT(hpsrv));
+  if (hpsrv->service == NULL) {
+    EebusServiceConfigDelete(hpsrv->cfg);
+    hpsrv->cfg = NULL;
+    return kEebusErrorInit;
+  }
+
   printf("Starting with SKI = %s\n", EEBUS_SERVICE_GET_LOCAL_SKI(hpsrv->service));
 
   // Add entities to SPINE Device Local
