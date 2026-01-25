@@ -288,6 +288,11 @@ void Destruct(WebsocketObject* self) {
     ws->uri = NULL;
   }
 
+  if (ws->remote_ski != NULL) {
+    StringDelete((char*)ws->remote_ski);
+    ws->remote_ski = NULL;
+  }
+
   if (ws->lws_connect_info != NULL) {
     EEBUS_FREE(ws->lws_connect_info);
     ws->lws_connect_info = NULL;
