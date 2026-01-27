@@ -221,6 +221,7 @@ void Destruct(InfoProviderObject* self) {
   }
 
   if (sn->mdns_entries != NULL) {
+    VectorFreeElements(sn->mdns_entries);
     VectorDestruct(sn->mdns_entries);
     EEBUS_FREE(sn->mdns_entries);
     sn->mdns_entries = NULL;

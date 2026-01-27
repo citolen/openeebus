@@ -269,12 +269,14 @@ void SmeProtHandshakeStateClientListenChoice(ShipConnection* self) {
 
     if (!SmeProtHandshakeStateMessageCheck(sme_prot_hs)) {
       ShipMessageDeserializeDelete(deserialize);
+      MessageBufferRelease(&self->msg);
       SmeProtHandshakeStateAbort(self, kMessageProtocolHandshakeErrorTypeSelectionMismatch);
       return;
     }
 
     if (SmeProtHandshakeStateSendMaximumSupportedShipVersion(self) != kEebusErrorOk) {
       ShipMessageDeserializeDelete(deserialize);
+      MessageBufferRelease(&self->msg);
       ShipConnectionCloseWithError(self, "Error serializing protocol handshake ship message");
       return;
     }
@@ -285,4 +287,5 @@ void SmeProtHandshakeStateClientListenChoice(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }

@@ -232,6 +232,7 @@ void SmeProtHandshakeStateServerListenProposal(ShipConnection* self) {
 
     if (msg_value->handshake_type != kProtocolHandshakeTypeAnnounceMax) {
       ShipMessageDeserializeDelete(deserialize);
+      MessageBufferRelease(&self->msg);
       SmeProtHandshakeStateAbort(self, kMessageProtocolHandshakeErrorTypeUnexpectedMessage);
       return;
     }
@@ -241,12 +242,14 @@ void SmeProtHandshakeStateServerListenProposal(ShipConnection* self) {
 
     if (!SmeProtHandshakeStateAgreeOnProtocolVersion(msg_value, &agreed_version_major, &agreed_version_minor)) {
       ShipMessageDeserializeDelete(deserialize);
+      MessageBufferRelease(&self->msg);
       SmeProtHandshakeStateAbort(self, kMessageProtocolHandshakeErrorTypeSelectionMismatch);
       return;
     }
 
     if (SmeProtHandshakeStateSendAgreementMessage(self, agreed_version_major, agreed_version_minor) != kEebusErrorOk) {
       ShipMessageDeserializeDelete(deserialize);
+      MessageBufferRelease(&self->msg);
       ShipConnectionCloseWithError(self, "Error serializing protocol handshake ship message");
       return;
     }
@@ -258,6 +261,7 @@ void SmeProtHandshakeStateServerListenProposal(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }
 
 void SmeProtHandshakeStateServerListenConfirm(ShipConnection* self) {
@@ -276,6 +280,7 @@ void SmeProtHandshakeStateServerListenConfirm(ShipConnection* self) {
     if (sme_prot_hs->handshake_type != kProtocolHandshakeTypeSelect) {
       SHIP_CONNECTION_DEBUG_PRINTF("Invalid protocol handshake response: kProtocolHandshakeTypeSelect\n");
       ShipMessageDeserializeDelete(deserialize);
+      MessageBufferRelease(&self->msg);
       SmeProtHandshakeStateAbort(self, kMessageProtocolHandshakeErrorTypeSelectionMismatch);
       return;
     }
@@ -287,4 +292,5 @@ void SmeProtHandshakeStateServerListenConfirm(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }

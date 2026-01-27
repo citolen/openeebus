@@ -288,7 +288,17 @@ void Destruct(WebsocketObject* self) {
     ws->uri = NULL;
   }
 
+  if (ws->remote_ski != NULL) {
+    StringDelete((char*)ws->remote_ski);
+    ws->remote_ski = NULL;
+  }
+
   if (ws->lws_connect_info != NULL) {
+    if (ws->lws_connect_info->path != NULL) {
+      StringDelete((char*)ws->lws_connect_info->path);
+      ws->lws_connect_info->path = NULL;
+    }
+
     EEBUS_FREE(ws->lws_connect_info);
     ws->lws_connect_info = NULL;
   }

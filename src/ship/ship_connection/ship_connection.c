@@ -134,11 +134,10 @@ void ShipConnectionQueueMsgDeallocator(void* msg) {
 
   ShipConnectionQueueMessage* queue_msg = (ShipConnectionQueueMessage*)msg;
 
-  if (queue_msg->type != kShipConnectionQueueMsgTypeDataReceived) {
-    return;
+  if ((queue_msg->type == kShipConnectionQueueMsgTypeDataReceived)
+      || (queue_msg->type == kShipConnectionQueueMsgTypeSpineDataToSend)) {
+    MessageBufferRelease(&queue_msg->msg_buf);
   }
-
-  MessageBufferRelease(&queue_msg->msg_buf);
 }
 
 void Destruct(DataWriterObject* self) {
@@ -582,6 +581,8 @@ void SmeHelloReadyStateEvaluateReceivedHelloMessage(ShipConnection* self) {
 
   if (SHIP_MESSAGE_DESERIALIZE_GET_VALUE_TYPE(deserialize) != kSmeHello) {
     ShipConnectionSetSmeState(self, kSmeHelloStateAbort);
+    ShipMessageDeserializeDelete(deserialize);
+    MessageBufferRelease(&self->msg);
     return;
   }
 
@@ -615,6 +616,7 @@ void SmeHelloReadyStateEvaluateReceivedHelloMessage(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }
 
 void SmeHelloStateReadyListen(ShipConnection* self) {
@@ -689,6 +691,8 @@ void SmeHelloPendingStateEvaluateReceivedHelloMessage(ShipConnection* self) {
 
   if (SHIP_MESSAGE_DESERIALIZE_GET_VALUE_TYPE(deserialize) != kSmeHello) {
     ShipConnectionSetSmeState(self, kSmeHelloStateAbort);
+    ShipMessageDeserializeDelete(deserialize);
+    MessageBufferRelease(&self->msg);
     return;
   }
 
@@ -722,6 +726,7 @@ void SmeHelloPendingStateEvaluateReceivedHelloMessage(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }
 
 void SmeHelloStatePendingListen(ShipConnection* self) {
@@ -889,6 +894,7 @@ void SmePinStateCheckInit(ShipConnection* self) {
   if (SHIP_MESSAGE_DESERIALIZE_GET_VALUE_TYPE(deserialize) != kSmeConnectionPinState) {
     ShipConnectionSetSmeState(self, kSmeHelloStateAbort);
     ShipMessageDeserializeDelete(deserialize);
+    MessageBufferRelease(&self->msg);
     return;
   }
 
@@ -901,6 +907,7 @@ void SmePinStateCheckInit(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }
 
 void SmePinStateCheckListen(ShipConnection* self) {
@@ -908,12 +915,15 @@ void SmePinStateCheckListen(ShipConnection* self) {
 
   if (error != kEebusErrorOk) {
     ShipConnectionCloseWithError(self, "SmePinStateCheckListen: Error receiving SHIP message");
+    return;
   }
 
   ShipMessageDeserializeObject* const deserialize = ShipMessageDeserializeCreate(&self->msg);
 
   if (SHIP_MESSAGE_DESERIALIZE_GET_VALUE_TYPE(deserialize) != kSmeConnectionPinState) {
     ShipConnectionCloseWithError(self, "Error deserializing PIN message");
+    ShipMessageDeserializeDelete(deserialize);
+    MessageBufferRelease(&self->msg);
     return;
   }
 
@@ -952,6 +962,7 @@ void SmePinStateCheckListen(ShipConnection* self) {
   }
 
   ShipMessageDeserializeDelete(deserialize);
+  MessageBufferRelease(&self->msg);
 }
 
 void SmeHandshakeAccessMethodsInit(ShipConnection* self) {
@@ -1006,6 +1017,7 @@ bool SmeHandshakeAccessMethodsCheckMessageVal(ShipConnection* self, ShipMessageD
   }
 
   if (StringIsEmpty(self->remote_ship_id)) {
+    StringDelete((char*)self->remote_ship_id);
     self->remote_ship_id = StringCopy(access_msg_val->id);
     SHIP_CONNECTION_DEBUG_PRINTF("Saved remote SHIP id: %s\n", self->remote_ship_id);
   }
