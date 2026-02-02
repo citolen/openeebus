@@ -7,6 +7,20 @@ project(${TESTS_NAME} LANGUAGES C CXX)
 
 add_executable(${TEST_NAME})
 
+# OpenSSL Library
+find_package(OpenSSL REQUIRED)
+
+if(APPLE)
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::Crypto)
+elseif(WIN32)
+  # For Windows, we need to link both SSL and Crypto libraries
+  # to ensure all OpenSSL functionality is available
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::SSL)
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::Crypto)
+else()
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} crypto)
+endif()
+
 target_sources(
   ${TEST_NAME}
   PRIVATE
@@ -44,6 +58,5 @@ target_link_options(
 target_link_libraries(
   ${TEST_NAME}
   PRIVATE
-  ssl
-  crypto
+  ${OPEN_SSL_LIBRARIES}
 )

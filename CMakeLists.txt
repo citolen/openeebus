@@ -41,9 +41,25 @@ if(WIN32)
         message(STATUS "Found Bonjour SDK at: ${BONJOUR_SDK_HOME}")
         set(BONJOUR_FOUND TRUE)
     else()
-        message(WARNING "Bonjour SDK not found at: ${BONJOUR_SDK_HOME}")
-        message(WARNING "Please install Bonjour SDK for Windows from Apple Developer")
-        set(BONJOUR_FOUND FALSE)
+        # Try vcpkg-installed mdnsresponder as fallback
+        find_library(DNSSD_LIBRARY
+            NAMES dnssd
+            PATHS "${VCPKG_INSTALLED}/lib"
+            NO_DEFAULT_PATH)
+        find_path(DNSSD_INCLUDE_DIR
+            NAMES dns_sd.h
+            PATHS "${VCPKG_INSTALLED}/include"
+            NO_DEFAULT_PATH)
+        if(DNSSD_LIBRARY AND DNSSD_INCLUDE_DIR)
+            target_include_directories(${PROJECT_NAME} PRIVATE "${DNSSD_INCLUDE_DIR}")
+            target_link_directories(${PROJECT_NAME} PUBLIC "${VCPKG_INSTALLED}/lib")
+            message(STATUS "Found dnssd via vcpkg: ${DNSSD_LIBRARY}")
+            set(BONJOUR_FOUND TRUE)
+        else()
+            message(WARNING "Bonjour SDK not found at: ${BONJOUR_SDK_HOME}")
+            message(FATAL_ERROR "Please install Bonjour SDK or mdnsresponder via vcpkg")
+            set(BONJOUR_FOUND FALSE)
+        endif()
     endif()
 
     # Try to find pthreads via vcpkg with more specific library names
@@ -69,24 +85,51 @@ if(WIN32)
     endif()
 endif()
 
-find_package(libwebsockets CONFIG REQUIRED)
+# Find dependencies - use pkg-config on Linux/macOS, find_package on Windows (vcpkg)
+if(NOT WIN32)
+  find_package(PkgConfig REQUIRED)
+endif()
 
-# Pick the correct libwebsockets target depending on how it was built
-set(LIBWEBSOCKETS_TARGET "")
-if(TARGET websockets_shared)
-  set(LIBWEBSOCKETS_TARGET websockets_shared)
-elseif(TARGET websockets)
-  set(LIBWEBSOCKETS_TARGET websockets)
-elseif(TARGET libwebsockets::websockets_shared)
-  set(LIBWEBSOCKETS_TARGET libwebsockets::websockets_shared)
-elseif(TARGET libwebsockets::websockets)
-  set(LIBWEBSOCKETS_TARGET libwebsockets::websockets)
+# libwebsockets Library
+if(WIN32)
+  find_package(libwebsockets CONFIG REQUIRED)
+  # Pick the correct libwebsockets target depending on how it was built
+  if(TARGET websockets_shared)
+    set(LIBWEBSOCKETS_TARGET websockets_shared)
+  elseif(TARGET websockets)
+    set(LIBWEBSOCKETS_TARGET websockets)
+  elseif(TARGET libwebsockets::websockets_shared)
+    set(LIBWEBSOCKETS_TARGET libwebsockets::websockets_shared)
+  elseif(TARGET libwebsockets::websockets)
+    set(LIBWEBSOCKETS_TARGET libwebsockets::websockets)
+  else()
+    message(FATAL_ERROR "libwebsockets found, but no known CMake target exists (websockets/websockets_shared).")
+  endif()
 else()
-  message(FATAL_ERROR "libwebsockets found, but no known CMake target exists (websockets/websockets_shared).")
+  pkg_check_modules(LIBWEBSOCKETS REQUIRED IMPORTED_TARGET libwebsockets)
+  set(LIBWEBSOCKETS_TARGET PkgConfig::LIBWEBSOCKETS)
 endif()
 
 find_package(OpenSSL REQUIRED)
-find_package(cJSON REQUIRED)
+if (APPLE)
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::Crypto)
+elseif(WIN32)
+  # For Windows, we need to link both SSL and Crypto libraries
+  # to ensure all OpenSSL functionality is available
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::SSL)
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::Crypto)
+else()
+  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} crypto)
+endif()
+
+# cJSON Library
+if(WIN32)
+  find_package(cJSON REQUIRED)
+  set(CJSON_LINK_TARGET cjson)
+else()
+  pkg_check_modules(CJSON REQUIRED IMPORTED_TARGET libcjson)
+  set(CJSON_LINK_TARGET PkgConfig::CJSON)
+endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 
@@ -136,24 +179,27 @@ else()
   )
 endif()
 
-if (APPLE)
-  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} OpenSSL::Crypto)
-elseif(WIN32)
-  # For Windows, we need to link both SSL and Crypto libraries
-  # to ensure all OpenSSL functionality is available
-  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} libssl)
-  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} libcrypto)
+# mDNS/DNS-SD Library
+if(WIN32)
+  # Windows uses Bonjour SDK (checked earlier in the file)
   set(DNS_SD_LIB "dnssd")
+elseif(APPLE)
+  # macOS has native mDNS support, no extra library needed
+  set(DNS_SD_LIB "")
 else()
-  set(DNS_SD_LIB "dns_sd")
-  set(OPEN_SSL_LIBRARIES ${OPEN_SSL_LIBRARIES} crypto)
+  # Linux uses libavahi-compat-libdnssd
+  find_library(DNS_SD_LIBRARY NAMES dns_sd)
+  if(NOT DNS_SD_LIBRARY)
+    message(FATAL_ERROR "dns_sd library not found. Install libavahi-compat-libdnssd-dev (Debian/Ubuntu) or avahi-compat-libdns_sd-devel (Fedora/RHEL)")
+  endif()
+  set(DNS_SD_LIB ${DNS_SD_LIBRARY})
 endif()
 
 target_link_libraries(
   ${PROJECT_NAME}
   PRIVATE
     ${THREAD_LIBRARY}
-    cjson
+    ${CJSON_LINK_TARGET}
     ${LIBWEBSOCKETS_TARGET}
     ${LIBWEBSOCKETS_DEP_LIBS}
     ${DNS_SD_LIB}

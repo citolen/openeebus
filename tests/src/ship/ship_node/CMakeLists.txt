@@ -50,20 +50,36 @@ if(WIN32)
   endif()
 endif()
 
-find_package(libwebsockets CONFIG REQUIRED)
-
-# Pick the correct libwebsockets target depending on how it was built
-set(LIBWEBSOCKETS_TARGET "")
-if(TARGET websockets_shared)
-  set(LIBWEBSOCKETS_TARGET websockets_shared)
-elseif(TARGET websockets)
-  set(LIBWEBSOCKETS_TARGET websockets)
-elseif(TARGET libwebsockets::websockets_shared)
-  set(LIBWEBSOCKETS_TARGET libwebsockets::websockets_shared)
-elseif(TARGET libwebsockets::websockets)
-  set(LIBWEBSOCKETS_TARGET libwebsockets::websockets)
+# Find libwebsockets - use pkg-config on Linux/macOS, find_package on Windows (vcpkg)
+if(WIN32)
+  find_package(libwebsockets CONFIG REQUIRED)
+  # Pick the correct libwebsockets target depending on how it was built
+  if(TARGET websockets_shared)
+    set(LIBWEBSOCKETS_TARGET websockets_shared)
+  elseif(TARGET websockets)
+    set(LIBWEBSOCKETS_TARGET websockets)
+  elseif(TARGET libwebsockets::websockets_shared)
+    set(LIBWEBSOCKETS_TARGET libwebsockets::websockets_shared)
+  elseif(TARGET libwebsockets::websockets)
+    set(LIBWEBSOCKETS_TARGET libwebsockets::websockets)
+  else()
+    message(FATAL_ERROR "libwebsockets found, but no known CMake target exists (websockets/websockets_shared).")
+  endif()
 else()
-  message(FATAL_ERROR "libwebsockets found, but no known CMake target exists (websockets/websockets_shared).")
+  # PkgConfig is already found in parent tests/CMakeLists.txt
+  pkg_check_modules(LIBWEBSOCKETS REQUIRED IMPORTED_TARGET libwebsockets)
+  set(LIBWEBSOCKETS_TARGET PkgConfig::LIBWEBSOCKETS)
+endif()
+
+# OpenSSL Library (required for tls_certificate.c)
+find_package(OpenSSL REQUIRED)
+if(APPLE)
+  set(OPEN_SSL_LIBRARIES OpenSSL::Crypto)
+elseif(WIN32)
+  set(OPEN_SSL_LIBRARIES OpenSSL::SSL)
+  set(OPEN_SSL_LIBRARIES OpenSSL::Crypto)
+else()
+  set(OPEN_SSL_LIBRARIES crypto)
 endif()
 
 target_sources(
@@ -128,4 +144,5 @@ target_link_libraries(
   ${THREAD_LIBRARY}
   ${DNS_SD_LIB}
   ${LIBWEBSOCKETS_TARGET}
+  ${OPEN_SSL_LIBRARIES}
 )

@@ -9,6 +9,11 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_executable(${PROJECT_NAME})
 
+set(MATH_LIBRARY "")
+if (NOT WIN32)
+    set(MATH_LIBRARY "m")
+endif()
+
 # Set proper runtime library for Windows to avoid LIBCMT conflicts
 if(WIN32)
     set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
@@ -31,5 +36,6 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+    ${MATH_LIBRARY}
     eebus
 )

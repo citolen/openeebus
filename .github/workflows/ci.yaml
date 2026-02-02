@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  codestyle:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # Full history needed for diff against main
+
+      - name: Fetch main branch
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18 clang-format
+
+      - name: Check code style
+        env:
+          CI: true
+        run: ./scripts/codestyle/format_diff.sh .
+
+      - name: Upload format diff
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: format-diff
+          path: diff.md
+
+  tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: codestyle
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libssl-dev \
+            libwebsockets-dev \
+            libcjson-dev \
+            libavahi-compat-libdnssd-dev
+
+      - name: Configure tests
+        run: cmake -B tests/build -S tests -G Ninja
+
+      - name: Build tests
+        run: cmake --build tests/build
+
+      - name: Run tests
+        run: ctest --test-dir tests/build --output-on-failure
+
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libssl-dev \
+            libwebsockets-dev \
+            libcjson-dev \
+            libavahi-compat-libdnssd-dev
+
+      - name: Configure
+        run: cmake -B build -G Ninja
+
+      - name: Build
+        run: cmake --build build
+
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          vcpkg install openssl:x64-windows libwebsockets:x64-windows cjson:x64-windows pthreads:x64-windows mdnsresponder:x64-windows
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release
+
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install dependencies
+        run: |
+          brew install openssl@3 libwebsockets cjson ninja
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
+            -DOPENSSL_INCLUDE_DIR=$(brew --prefix openssl@3)/include \
+            -DOPENSSL_CRYPTO_LIBRARY=$(brew --prefix openssl@3)/lib/libcrypto.dylib \
+            -DOPENSSL_SSL_LIBRARY=$(brew --prefix openssl@3)/lib/libssl.dylib
+
+      - name: Build
+        run: cmake --build build
