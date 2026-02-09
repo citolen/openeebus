@@ -15,43 +15,46 @@
  */
 /**
  * @file
- * @brief Energy Guard LPC use case internal declarations
+ * @brief Energy Guard Limitation of Power use case internal declarations
  */
 
-#ifndef SRC_USE_CASE_ENERGY_GUARD_LPC_EG_LPC_INTERNAL_H_
-#define SRC_USE_CASE_ENERGY_GUARD_LPC_EG_LPC_INTERNAL_H_
+#ifndef SRC_USE_CASE_ACTOR_EG_EG_LP_INTERNAL_H_
+#define SRC_USE_CASE_ACTOR_EG_EG_LP_INTERNAL_H_
 
-#include "src/use_case/api/eg_lpc_listener_interface.h"
+#include "src/spine/model/device_configuration_types.h"
+#include "src/use_case/api/eg_lp_listener_interface.h"
+#include "src/use_case/model/load_limit_types.h"
 #include "src/use_case/use_case.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-typedef struct EgLpcUseCase EgLpcUseCase;
-struct EgLpcUseCase {
+typedef struct EgLpUseCase EgLpUseCase;
+struct EgLpUseCase {
   /** Inherits the Entity */
   UseCase obj;
 
-  EgLpcListenerObject* eg_lpc_listener;
+  EnergyDirectionType energy_direction;
+
+  DeviceConfigurationKeyNameType failsafe_power_limit_key;
+
+  EgLpListenerObject* eg_lp_listener;
 };
 
-#define EG_LPC_USE_CASE(obj) ((EgLpcUseCase*)(obj))
+#define EG_LP_USE_CASE(obj) ((EgLpUseCase*)(obj))
 
-EebusError EgLpcGetActivePowerConsumptionLimitInternal(
-    const EgLpcUseCase* self,
-    const EntityAddressType* remote_entity_addr,
-    LoadLimit* limit
-);
+EebusError
+EgLpGetActivePowerLimitInternal(const EgLpUseCase* self, const EntityAddressType* remote_entity_addr, LoadLimit* limit);
 
-EebusError EgLpcGetFailsafeConsumptionActivePowerLimitInternal(
-    const EgLpcUseCase* self,
+EebusError EgLpGetFailsafeActivePowerLimitInternal(
+    const EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     ScaledValue* power_limit
 );
 
-EebusError EgLpcGetFailsafeDurationMinimumInternal(
-    const EgLpcUseCase* self,
+EebusError EgLpGetFailsafeDurationMinimumInternal(
+    const EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     DurationType* duration
 );
@@ -60,4 +63,4 @@ EebusError EgLpcGetFailsafeDurationMinimumInternal(
 }
 #endif  // __cplusplus
 
-#endif  // SRC_USE_CASE_ENERGY_GUARD_LPC_EG_LPC_INTERNAL_H_
+#endif  // SRC_USE_CASE_ACTOR_EG_EG_LP_INTERNAL_H_

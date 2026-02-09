@@ -23,20 +23,7 @@
 #include <stddef.h>
 
 #include "src/common/array_util.h"
-#include "src/spine/entity/entity_local.h"
-#include "src/spine/feature/feature_local.h"
-#include "src/spine/model/loadcontrol_types.h"
-#include "src/spine/model/usecase_information_types.h"
-#include "src/use_case/actor/eg/lpc/eg_lpc_events.h"
-#include "src/use_case/actor/eg/lpc/eg_lpc_internal.h"
-#include "src/use_case/use_case.h"
-
-static const UseCaseInterface lpc_use_case_methods = {
-    .destruct                       = UseCaseDestruct,
-    .is_entity_compatible           = UseCaseIsEntityCompatible,
-    .is_use_case_compatible         = UseCaseIsUseCaseCompatible,
-    .get_remote_entity_with_address = UseCaseGetRemoteEntityWithAddress,
-};
+#include "src/use_case/actor/eg/eg_lp.h"
 
 static const UseCaseActorType valid_actor_types[] = {kUseCaseActorTypeControllableSystem};
 static const EntityTypeType valid_entity_types[]  = {
@@ -99,45 +86,6 @@ static const UseCaseInfo eg_lpc_use_case_info = {
     .available               = true,
 };
 
-static void AddFeatures(EntityLocalObject* entity);
-static void
-EgLpcUseCaseConstruct(EgLpcUseCase* self, EntityLocalObject* local_entity, EgLpcListenerObject* eg_lpc_listener);
-
-void AddFeatures(EntityLocalObject* entity) {
-  // Energy Guard LPC client features
-  static const FeatureTypeType eg_lpc_client_features[] = {
-      kFeatureTypeTypeDeviceDiagnosis,
-      kFeatureTypeTypeLoadControl,
-      kFeatureTypeTypeDeviceConfiguration,
-      kFeatureTypeTypeElectricalConnection,
-  };
-
-  for (size_t i = 0; i < ARRAY_SIZE(eg_lpc_client_features); ++i) {
-    ENTITY_LOCAL_ADD_FEATURE_WITH_TYPE_AND_ROLE(entity, eg_lpc_client_features[i], kRoleTypeClient);
-  }
-
-  // server features
-  FeatureLocalObject* const fl
-      = ENTITY_LOCAL_ADD_FEATURE_WITH_TYPE_AND_ROLE(entity, kFeatureTypeTypeDeviceDiagnosis, kRoleTypeServer);
-  FEATURE_LOCAL_SET_FUNCTION_OPERATIONS(fl, kFunctionTypeDeviceDiagnosisHeartbeatData, true, false);
-}
-
-void EgLpcUseCaseConstruct(EgLpcUseCase* self, EntityLocalObject* local_entity, EgLpcListenerObject* eg_lpc_listener) {
-  UseCaseConstruct(USE_CASE(self), &eg_lpc_use_case_info, local_entity, EgLpcHandleEvent);
-  // Override "virtual functions table"
-  USE_CASE_INTERFACE(self) = &lpc_use_case_methods;
-
-  self->eg_lpc_listener = eg_lpc_listener;
-  AddFeatures(local_entity);
-}
-
-EgLpcUseCaseObject* EgLpcUseCaseCreate(EntityLocalObject* local_entity, EgLpcListenerObject* eg_lpc_listener) {
-  EgLpcUseCase* eg_lpc_use_case = EEBUS_MALLOC(sizeof(*eg_lpc_use_case));
-  if (eg_lpc_use_case == NULL) {
-    return NULL;
-  }
-
-  EgLpcUseCaseConstruct(eg_lpc_use_case, local_entity, eg_lpc_listener);
-
-  return EG_LPC_USE_CASE_OBJECT(eg_lpc_use_case);
+EgLpUseCaseObject* EgLpcUseCaseCreate(EntityLocalObject* local_entity, EgLpListenerObject* eg_lpc_listener) {
+  return EgLpUseCaseCreate(kEnergyDirectionTypeConsume, &eg_lpc_use_case_info, local_entity, eg_lpc_listener);
 }

@@ -15,9 +15,12 @@
  */
 #include "tests/src/ship/ship_connection/ship_connection/ship_connection_test_suite.h"
 
+#include <string_view>
+
 #include "src/common/eebus_timer/eebus_timer.h"
 #include "src/common/string_util.h"
 #include "src/ship/ship_connection/ship_connection_internal.h"
+#include "tests/src/json.h"
 #include "tests/src/memory_leak.inc"
 #include "tests/src/mocks/common/eebus_timer/eebus_timer_mock.h"
 
@@ -28,16 +31,22 @@
 
 using testing::_;
 
-EebusError ShipConnectionTestSuite::MessageBufferInitHelper(MessageBuffer* msg_buf, const char* msg, size_t msg_size) {
-  const size_t data_size = sizeof(uint8_t) + msg_size;
+EebusError ShipConnectionTestSuite::MessageBufferInitHelper(MessageBuffer* msg_buf, const std::string_view& msg) {
+  std::unique_ptr<char[], decltype(&JsonFree)> msg_unformatted{JsonUnformat(msg), JsonFree};
+  if (msg_unformatted == nullptr) {
+    return kEebusErrorInit;
+  }
+
+  const size_t msg_unformatted_size = strlen(msg_unformatted.get()) + 1;
+
+  const size_t data_size = sizeof(uint8_t) + msg_unformatted_size;
   uint8_t* const data    = (uint8_t*)malloc(data_size);
   if (data == NULL) {
     return kEebusErrorMemoryAllocate;
   }
 
   data[0] = kMsgTypeControl;
-  memcpy(data + 1, msg, msg_size);
-
+  memcpy(data + 1, msg_unformatted.get(), msg_unformatted_size);
   msg_buf->data        = data;
   msg_buf->data_size   = data_size;
   msg_buf->deallocator = free;

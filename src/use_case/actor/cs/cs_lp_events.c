@@ -20,17 +20,17 @@
 
 #include "src/spine/events/events.h"
 #include "src/spine/model/device_diagnosis_types.h"
-#include "src/use_case/actor/cs/lpc/cs_lpc_internal.h"
+#include "src/use_case/actor/cs/cs_lp_internal.h"
 #include "src/use_case/specialization/device_configuration/device_configuration_server.h"
 #include "src/use_case/specialization/device_diagnosis/device_diagnosis_client.h"
 #include "src/use_case/specialization/load_control/load_control_server.h"
 
-static void OnLoadControlLimitDataUpdate(CsLpcUseCase* self, const EventPayload* payload);
-static void OnConfigurationDataUpdate(const CsLpcUseCase* self, const EventPayload* payload);
-static void OnHeartbeat(const CsLpcUseCase* self, const EventPayload* payload);
-static void OnDataChange(CsLpcUseCase* self, const EventPayload* payload);
+static void OnLoadControlLimitDataUpdate(CsLpUseCase* self, const EventPayload* payload);
+static void OnConfigurationDataUpdate(const CsLpUseCase* self, const EventPayload* payload);
+static void OnHeartbeat(const CsLpUseCase* self, const EventPayload* payload);
+static void OnDataChange(CsLpUseCase* self, const EventPayload* payload);
 
-void AddDeviceDiagnosisClient(CsLpcUseCase* self, EntityRemoteObject* remote_entity) {
+void AddDeviceDiagnosisClient(CsLpUseCase* self, EntityRemoteObject* remote_entity) {
   EntityLocalObject* const local_entity = USE_CASE(self)->local_entity;
 
   // Delete heartbeat the Device Diagnosis Client instance if was previously created
@@ -50,7 +50,7 @@ void AddDeviceDiagnosisClient(CsLpcUseCase* self, EntityRemoteObject* remote_ent
   }
 }
 
-void OnDeviceConnected(CsLpcUseCase* self, const EventPayload* payload) {
+void OnDeviceConnected(CsLpUseCase* self, const EventPayload* payload) {
   if (payload->device == NULL) {
     return;
   }
@@ -95,13 +95,13 @@ void OnDeviceConnected(CsLpcUseCase* self, const EventPayload* payload) {
 }
 
 // Subscribe to the DeviceDiagnosis Server of the entity that created a binding
-void SubscribeHeartbeatWorkaround(CsLpcUseCase* self, const EventPayload* payload) {
+void SubscribeHeartbeatWorkaround(CsLpUseCase* self, const EventPayload* payload) {
   if (self->heartbeat_keo_workaround) {
     AddDeviceDiagnosisClient(self, payload->entity);
   }
 }
 
-void OnBindingAdded(CsLpcUseCase* self, const EventPayload* payload) {
+void OnBindingAdded(CsLpUseCase* self, const EventPayload* payload) {
   if (payload->local_feature == NULL) {
     return;
   }
@@ -112,10 +112,10 @@ void OnBindingAdded(CsLpcUseCase* self, const EventPayload* payload) {
   }
 }
 
-void OnLoadControlLimitDataUpdate(CsLpcUseCase* self, const EventPayload* payload) {
+void OnLoadControlLimitDataUpdate(CsLpUseCase* self, const EventPayload* payload) {
   const UseCase* const use_case = USE_CASE(self);
 
-  if (self->cs_lpc_listener == NULL) {
+  if (self->cs_lp_listener == NULL) {
     return;
   }
 
@@ -137,7 +137,7 @@ void OnLoadControlLimitDataUpdate(CsLpcUseCase* self, const EventPayload* payloa
   const LoadControlLimitDescriptionDataType filter = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
       .limit_category  = &(LoadControlCategoryType){kLoadControlCategoryTypeObligation},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
@@ -146,16 +146,16 @@ void OnLoadControlLimitDataUpdate(CsLpcUseCase* self, const EventPayload* payloa
   }
 
   LoadLimit limit;
-  EebusError ret = GetConsumptionLimitInternal(CS_LPC_USE_CASE(self), &limit);
+  EebusError ret = CsLpGetActivePowerLimitInternal(CS_LP_USE_CASE(self), &limit);
   if (ret == kEebusErrorOk) {
-    CS_LPC_LISTENER_ON_POWER_LIMIT_RECEIVE(self->cs_lpc_listener, &limit.value, &limit.duration, limit.is_active);
+    CS_LP_LISTENER_ON_POWER_LIMIT_RECEIVE(self->cs_lp_listener, &limit.value, &limit.duration, limit.is_active);
   }
 }
 
-void OnConfigurationDataUpdate(const CsLpcUseCase* self, const EventPayload* payload) {
+void OnConfigurationDataUpdate(const CsLpUseCase* self, const EventPayload* payload) {
   const UseCase* const use_case = USE_CASE(self);
 
-  if (self->cs_lpc_listener == NULL) {
+  if (self->cs_lp_listener == NULL) {
     return;
   }
 
@@ -165,7 +165,7 @@ void OnConfigurationDataUpdate(const CsLpcUseCase* self, const EventPayload* pay
   }
 
   const DeviceConfigurationKeyValueDescriptionDataType power_limit_description = {
-      .key_name = &(DeviceConfigurationKeyNameType){kDeviceConfigurationKeyNameTypeFailsafeConsumptionActivePowerLimit},
+      .key_name = &self->failsafe_power_limit_key,
   };
 
   if (DeviceConfigurationCommonCheckKeyValueWithFilter(
@@ -176,9 +176,9 @@ void OnConfigurationDataUpdate(const CsLpcUseCase* self, const EventPayload* pay
     ScaledValue power_limit = {0};
     bool is_changeable      = false;
 
-    const EebusError err = GetFailsafeConsumptionActivePowerLimitInternal(self, &power_limit, &is_changeable);
+    const EebusError err = CsLpGetFailsafeActivePowerLimitInternal(self, &power_limit, &is_changeable);
     if (err == kEebusErrorOk) {
-      CS_LPC_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(self->cs_lpc_listener, &power_limit);
+      CS_LP_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(self->cs_lp_listener, &power_limit);
     }
   }
 
@@ -194,14 +194,14 @@ void OnConfigurationDataUpdate(const CsLpcUseCase* self, const EventPayload* pay
     EebusDuration duration = {0};
     bool is_changeable     = false;
 
-    const EebusError err = GetFailsafeDurationMinimumInternal(self, &duration, &is_changeable);
+    const EebusError err = CsLpGetFailsafeDurationMinimumInternal(self, &duration, &is_changeable);
     if (err == kEebusErrorOk) {
-      CS_LPC_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(self->cs_lpc_listener, &duration);
+      CS_LP_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(self->cs_lp_listener, &duration);
     }
   }
 }
 
-void OnHeartbeat(const CsLpcUseCase* self, const EventPayload* payload) {
+void OnHeartbeat(const CsLpUseCase* self, const EventPayload* payload) {
   if ((payload->cmd_classifier == NULL) || (*payload->cmd_classifier != kCommandClassifierTypeNotify)) {
     return;
   }
@@ -211,12 +211,12 @@ void OnHeartbeat(const CsLpcUseCase* self, const EventPayload* payload) {
     return;
   }
 
-  if (self->cs_lpc_listener != NULL) {
-    CS_LPC_LISTENER_ON_HEARTBEAT_RECEIVE(self->cs_lpc_listener, *data->heartbeat_counter);
+  if (self->cs_lp_listener != NULL) {
+    CS_LP_LISTENER_ON_HEARTBEAT_RECEIVE(self->cs_lp_listener, *data->heartbeat_counter);
   }
 }
 
-void OnDataChange(CsLpcUseCase* self, const EventPayload* payload) {
+void OnDataChange(CsLpUseCase* self, const EventPayload* payload) {
   if ((payload->cmd_classifier == NULL)
       || ((*payload->cmd_classifier != kCommandClassifierTypeWrite)
           && (*payload->cmd_classifier != kCommandClassifierTypeNotify))) {
@@ -231,8 +231,8 @@ void OnDataChange(CsLpcUseCase* self, const EventPayload* payload) {
   }
 }
 
-void CsLpcHandleEvent(const EventPayload* payload, void* ctx) {
-  CsLpcUseCase* cs_lpc_use_case = (CsLpcUseCase*)ctx;
+void CsLpHandleEvent(const EventPayload* payload, void* ctx) {
+  CsLpUseCase* cs_lpc_use_case = (CsLpUseCase*)ctx;
 
   if ((payload->event_type == kEventTypeDeviceChange) && (payload->change_type == kElementChangeAdd)) {
     OnDeviceConnected(cs_lpc_use_case, payload);

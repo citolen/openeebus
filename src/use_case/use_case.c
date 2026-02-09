@@ -27,6 +27,7 @@
 #include "src/use_case/api/use_case_interface.h"
 
 static void UseCaseEntityAddUseCaseInfo(UseCase* self);
+static bool IsEntityTypeCompatible(const UseCase* self, EntityTypeType entity_type);
 
 void UseCaseEntityAddUseCaseInfo(UseCase* self) {
   const UseCaseInfo* const info = self->info;
@@ -80,17 +81,37 @@ bool IsVaildEntityType(const UseCase* self, EntityTypeType entity_type) {
   return false;
 }
 
+bool IsEntityTypeCompatible(const UseCase* self, EntityTypeType entity_type) {
+  const UseCaseInfo* const info = self->info;
+
+  for (size_t i = 0; i < info->valid_entity_types_size; ++i) {
+    if (info->valid_entity_types[i] == entity_type) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool UseCaseIsEntityCompatible(const UseCaseObject* self, const EntityRemoteObject* remote_entity) {
-  const UseCase* const uc = USE_CASE(self);
+  const UseCase* const use_case = USE_CASE(self);
 
   if (remote_entity == NULL) {
     return false;
   }
 
   const EntityTypeType entity_type = ENTITY_GET_TYPE(ENTITY_OBJECT(remote_entity));
-  const UseCaseInfo* const info    = uc->info;
-  for (size_t i = 0; i < info->valid_entity_types_size; ++i) {
-    if (info->valid_entity_types[i] == entity_type) {
+  if (!IsEntityTypeCompatible(use_case, entity_type)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < use_case->info->valid_actor_types_size; ++i) {
+    UseCaseFilterType use_case_filter = {
+        .actor            = use_case->info->valid_actor_types[i],
+        .use_case_name_id = use_case->info->use_case_name_id,
+    };
+
+    if (ENTITY_REMOTE_HAS_USE_CASE_SUPPORT(remote_entity, &use_case_filter)) {
       return true;
     }
   }

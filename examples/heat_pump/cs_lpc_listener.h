@@ -24,17 +24,18 @@
 #include <stddef.h>
 
 #include "src/common/eebus_malloc.h"
-#include "src/use_case/api/cs_lpc_listener_interface.h"
-
-CsLpcListenerObject* CsLpcListenerCreate(void);
+#include "src/use_case/actor/cs/cs_lp.h"
+#include "src/use_case/api/cs_lp_listener_interface.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-static inline void CsLpcListenerDelete(CsLpcListenerObject* cs_lpc_listener) {
+CsLpListenerObject* CsLpcListenerCreate(void);
+
+static inline void CsLpcListenerDelete(CsLpListenerObject* cs_lpc_listener) {
   if (cs_lpc_listener != NULL) {
-    CS_LPC_LISTENER_DESTRUCT(cs_lpc_listener);
+    CS_LP_LISTENER_DESTRUCT(cs_lpc_listener);
     EEBUS_FREE(cs_lpc_listener);
   }
 }

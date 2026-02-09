@@ -75,9 +75,6 @@ void OnEntityAddedHandleMeasurement(const MaMpcUseCase* self, EntityRemoteObject
 // process required steps when a device is connected
 void OnEntityAdded(MaMpcUseCase* self, const EventPayload* payload) {
   EntityRemoteObject* const entity = payload->entity;
-  if (entity == NULL) {
-    return;
-  }
 
   if (!USE_CASE_IS_USE_CASE_COMPATIBLE(USE_CASE_OBJECT(self), payload->use_case_filter)) {
     return;
@@ -94,9 +91,6 @@ void OnEntityAdded(MaMpcUseCase* self, const EventPayload* payload) {
 
 void OnEntityRemoved(const MaMpcUseCase* self, const EventPayload* payload) {
   EntityRemoteObject* const entity = payload->entity;
-  if (entity == NULL) {
-    return;
-  }
 
   if (!USE_CASE_IS_USE_CASE_COMPATIBLE(USE_CASE_OBJECT(self), payload->use_case_filter)) {
     return;

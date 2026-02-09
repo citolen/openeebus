@@ -15,28 +15,15 @@
  */
 /**
  * @file
- * @brief CS LPC Listener implementation
+ * @brief CS LP Listener mock implementation
  */
 
-#include <inttypes.h>
-#include <math.h>
-#include <stdio.h>
+#include "cs_lp_listener_mock.h"
 
-#include "examples/heat_pump/cs_lpc_listener.h"
-#include "src/common/eebus_arguments.h"
-#include "src/common/eebus_date_time/eebus_date_time.h"
+#include <gmock/gmock.h>
+
 #include "src/common/eebus_malloc.h"
 #include "src/use_case/api/cs_lp_listener_interface.h"
-#include "src/use_case/model/scaled_value.h"
-
-typedef struct CsLpcListener CsLpcListener;
-
-struct CsLpcListener {
-  /** Implements the CS LPC Listener Interface */
-  CsLpListenerObject obj;
-};
-
-#define CS_LPC_LISTENER(obj) ((CsLpcListener*)(obj))
 
 static void Destruct(CsLpListenerObject* self);
 static void OnPowerLimitReceive(
@@ -49,7 +36,7 @@ static void OnFailsafePowerLimitReceive(CsLpListenerObject* self, const ScaledVa
 static void OnFailsafeDurationReceive(CsLpListenerObject* self, const DurationType* duration);
 static void OnHeartbeatReceive(CsLpListenerObject* self, uint64_t heartbeat_counter);
 
-static const CsLpListenerInterface cs_lpc_listener_methods = {
+static const CsLpListenerInterface cs_lp_listener_methods = {
     .destruct                        = Destruct,
     .on_power_limit_receive          = OnPowerLimitReceive,
     .on_failsafe_power_limit_receive = OnFailsafePowerLimitReceive,
@@ -57,62 +44,61 @@ static const CsLpListenerInterface cs_lpc_listener_methods = {
     .on_heartbeat_receive            = OnHeartbeatReceive,
 };
 
-static EebusError CsLpcListenerConstruct(CsLpcListener* self);
+static EebusError CsLpListenerMockConstruct(CsLpListenerMock* self);
 
-EebusError CsLpcListenerConstruct(CsLpcListener* self) {
+EebusError CsLpListenerMockConstruct(CsLpListenerMock* self) {
   // Override "virtual functions table"
-  CS_LP_LISTENER_INTERFACE(self) = &cs_lpc_listener_methods;
+  CS_LP_LISTENER_INTERFACE(self) = &cs_lp_listener_methods;
+
+  self->gmock = new CsLpListenerGMock();
+  if (self->gmock == nullptr) {
+    return kEebusErrorMemoryAllocate;
+  }
 
   return kEebusErrorOk;
 }
 
-CsLpListenerObject* CsLpcListenerCreate(void) {
-  CsLpcListener* const cs_lpc_listener = (CsLpcListener*)EEBUS_MALLOC(sizeof(CsLpcListener));
-  if (cs_lpc_listener == NULL) {
-    return NULL;
+CsLpListenerMock* CsLpListenerMockCreate(void) {
+  CsLpListenerMock* const mock = (CsLpListenerMock*)EEBUS_MALLOC(sizeof(CsLpListenerMock));
+  if (mock == nullptr) {
+    return nullptr;
   }
 
-  if (CsLpcListenerConstruct(cs_lpc_listener) != kEebusErrorOk) {
-    CsLpcListenerDelete(CS_LP_LISTENER_OBJECT(cs_lpc_listener));
-    return NULL;
+  if (CsLpListenerMockConstruct(mock) != kEebusErrorOk) {
+    CsLpListenerMockDelete(CS_LP_LISTENER_MOCK(mock));
+    return nullptr;
   }
 
-  return CS_LP_LISTENER_OBJECT(cs_lpc_listener);
+  return mock;
 }
 
 void Destruct(CsLpListenerObject* self) {
-  UNUSED(self);
-
-  // Nothing to be deallocated yet
+  CsLpListenerMock* const mock = CS_LP_LISTENER_MOCK(self);
+  mock->gmock->Destruct(self);
+  delete mock->gmock;
 }
 
 void OnPowerLimitReceive(
     CsLpListenerObject* self,
     const ScaledValue* power_limit,
-    const EebusDuration* duration,
+    const DurationType* duration,
     bool is_active
 ) {
-  UNUSED(self);
-
-  ScaledValuePrint("CS LPC Power Limit received %sW, ", power_limit);
-  EebusDurationPrint("duration = %s, ", duration);
-  printf("active = %s\n", is_active ? "true" : "false");
+  CsLpListenerMock* const mock = CS_LP_LISTENER_MOCK(self);
+  mock->gmock->OnPowerLimitReceive(self, power_limit, duration, is_active);
 }
 
 void OnFailsafePowerLimitReceive(CsLpListenerObject* self, const ScaledValue* power_limit) {
-  UNUSED(self);
-
-  ScaledValuePrint("CS LPC Failsafe Active Power Limit received:  %sW\n", power_limit);
+  CsLpListenerMock* const mock = CS_LP_LISTENER_MOCK(self);
+  mock->gmock->OnFailsafePowerLimitReceive(self, power_limit);
 }
 
 void OnFailsafeDurationReceive(CsLpListenerObject* self, const DurationType* duration) {
-  UNUSED(self);
-
-  EebusDurationPrint("CS LPC Failsafe Duration Minimum received: %s\n", duration);
+  CsLpListenerMock* const mock = CS_LP_LISTENER_MOCK(self);
+  mock->gmock->OnFailsafeDurationReceive(self, duration);
 }
 
 void OnHeartbeatReceive(CsLpListenerObject* self, uint64_t heartbeat_counter) {
-  UNUSED(self);
-
-  printf("CS LPC Heartbeat received, counter = %" PRIu64 "\n", heartbeat_counter);
+  CsLpListenerMock* const mock = CS_LP_LISTENER_MOCK(self);
+  mock->gmock->OnHeartbeatReceive(self, heartbeat_counter);
 }

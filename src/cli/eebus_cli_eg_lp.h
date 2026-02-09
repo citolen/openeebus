@@ -27,7 +27,14 @@
 extern "C" {
 #endif  // __cplusplus
 
-void EebusCliHandleCmdEgLpc(const EebusCli* self, const char* const* tokens, size_t num_tokens);
+typedef struct EgLpCli EgLpCli;
+
+EgLpCli*
+EgLpCliCreate(EnergyDirectionType energy_direction, EgLpUseCaseObject* eg_lp, const EntityAddressType* entity_addr);
+
+void EgLpCliDelete(EgLpCli* eebus_cli_eg_lp);
+
+void EgLpCliHandleCmdEgLp(const EgLpCli* self, const char* const* tokens, size_t num_tokens);
 
 #ifdef __cplusplus
 }

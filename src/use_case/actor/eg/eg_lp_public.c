@@ -17,8 +17,8 @@
 
 #include "src/spine/model/entity_types.h"
 #include "src/use_case/actor/common/load_control.h"
-#include "src/use_case/actor/eg/lpc/eg_lpc.h"
-#include "src/use_case/actor/eg/lpc/eg_lpc_internal.h"
+#include "src/use_case/actor/eg/eg_lp.h"
+#include "src/use_case/actor/eg/eg_lp_internal.h"
 #include "src/use_case/model/load_limit_types.h"
 #include "src/use_case/specialization/device_configuration/device_configuration_client.h"
 #include "src/use_case/specialization/device_diagnosis/device_diagnosis_client.h"
@@ -31,8 +31,8 @@
 //
 //-------------------------------------------------------------------------------------------//
 
-EebusError EgLpcGetActivePowerConsumptionLimitInternal(
-    const EgLpcUseCase* self,
+EebusError EgLpGetActivePowerLimitInternal(
+    const EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     LoadLimit* limit
 ) {
@@ -53,7 +53,7 @@ EebusError EgLpcGetActivePowerConsumptionLimitInternal(
 
   const LoadControlLimitDescriptionDataType filter = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
@@ -69,11 +69,8 @@ EebusError EgLpcGetActivePowerConsumptionLimitInternal(
   return LoadLimitInitWithLoadControlLimitData(limit, limit_data);
 }
 
-EebusError EgLpcGetActivePowerConsumptionLimit(
-    const EgLpcUseCaseObject* self,
-    const EntityAddressType* remote_entity_addr,
-    LoadLimit* limit
-) {
+EebusError
+EgLpGetActivePowerLimit(const EgLpUseCaseObject* self, const EntityAddressType* remote_entity_addr, LoadLimit* limit) {
   const UseCase* const use_case = USE_CASE(self);
 
   if ((remote_entity_addr == NULL) || (limit == NULL)) {
@@ -83,14 +80,14 @@ EebusError EgLpcGetActivePowerConsumptionLimit(
   EebusError err = kEebusErrorOk;
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  err = EgLpcGetActivePowerConsumptionLimitInternal(EG_LPC_USE_CASE(self), remote_entity_addr, limit);
+  err = EgLpGetActivePowerLimitInternal(EG_LP_USE_CASE(self), remote_entity_addr, limit);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 
   return err;
 }
 
-EebusError EgLpcSetActivePowerConsumptionLimitInternal(
-    EgLpcUseCase* self,
+EebusError EgLpSetActivePowerLimitInternal(
+    EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     const LoadLimit* limit
 ) {
@@ -105,18 +102,15 @@ EebusError EgLpcSetActivePowerConsumptionLimitInternal(
 
   const LoadControlLimitDescriptionDataType filter = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
   return LoadControlWriteLimit(use_case->local_entity, remote_entity, &filter, limit);
 }
 
-EebusError EgLpcSetActivePowerConsumptionLimit(
-    EgLpcUseCaseObject* self,
-    const EntityAddressType* remote_entity_addr,
-    const LoadLimit* limit
-) {
+EebusError
+EgLpSetActivePowerLimit(EgLpUseCaseObject* self, const EntityAddressType* remote_entity_addr, const LoadLimit* limit) {
   const UseCase* const use_case = USE_CASE(self);
 
   if ((remote_entity_addr == NULL) || (limit == NULL)) {
@@ -126,7 +120,7 @@ EebusError EgLpcSetActivePowerConsumptionLimit(
   EebusError err = kEebusErrorOk;
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  err = EgLpcSetActivePowerConsumptionLimitInternal(EG_LPC_USE_CASE(self), remote_entity_addr, limit);
+  err = EgLpSetActivePowerLimitInternal(EG_LP_USE_CASE(self), remote_entity_addr, limit);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 
   return err;
@@ -138,8 +132,8 @@ EebusError EgLpcSetActivePowerConsumptionLimit(
 //
 //-------------------------------------------------------------------------------------------//
 
-EebusError EgLpcGetFailsafeConsumptionActivePowerLimitInternal(
-    const EgLpcUseCase* self,
+EebusError EgLpGetFailsafeActivePowerLimitInternal(
+    const EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     ScaledValue* power_limit
 ) {
@@ -152,9 +146,6 @@ EebusError EgLpcGetFailsafeConsumptionActivePowerLimitInternal(
     return kEebusErrorNoChange;
   }
 
-  static const DeviceConfigurationKeyNameType key_name
-      = kDeviceConfigurationKeyNameTypeFailsafeConsumptionActivePowerLimit;
-
   DeviceConfigurationClient dcc;
   EebusError err = DeviceConfigurationClientConstruct(&dcc, use_case->local_entity, remote_entity);
   if (err != kEebusErrorOk) {
@@ -162,7 +153,7 @@ EebusError EgLpcGetFailsafeConsumptionActivePowerLimitInternal(
   }
 
   const DeviceConfigurationKeyValueDescriptionDataType filter = {
-      .key_name   = &key_name,
+      .key_name   = &self->failsafe_power_limit_key,
       .value_type = &(DeviceConfigurationKeyValueTypeType){kDeviceConfigurationKeyValueTypeTypeScaledNumber},
   };
 
@@ -173,8 +164,8 @@ EebusError EgLpcGetFailsafeConsumptionActivePowerLimitInternal(
   return ScaledValueInitWithScaledNumber(power_limit, scaled_number);
 }
 
-EebusError EgLpcGetFailsafeConsumptionActivePowerLimit(
-    const EgLpcUseCaseObject* self,
+EebusError EgLpGetFailsafeActivePowerLimit(
+    const EgLpUseCaseObject* self,
     const EntityAddressType* remote_entity_addr,
     ScaledValue* power_limit
 ) {
@@ -187,14 +178,14 @@ EebusError EgLpcGetFailsafeConsumptionActivePowerLimit(
   EebusError err = kEebusErrorOk;
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  err = EgLpcGetFailsafeConsumptionActivePowerLimitInternal(EG_LPC_USE_CASE(self), remote_entity_addr, power_limit);
+  err = EgLpGetFailsafeActivePowerLimitInternal(EG_LP_USE_CASE(self), remote_entity_addr, power_limit);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 
   return err;
 }
 
-EebusError EgLpcSetFailsafeConsumptionActivePowerLimitInternal(
-    EgLpcUseCase* self,
+EebusError EgLpSetFailsafeActivePowerLimitInternal(
+    EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     const ScaledValue* power_limit
 ) {
@@ -207,9 +198,6 @@ EebusError EgLpcSetFailsafeConsumptionActivePowerLimitInternal(
     return kEebusErrorNoChange;
   }
 
-  static const DeviceConfigurationKeyNameType key_name
-      = kDeviceConfigurationKeyNameTypeFailsafeConsumptionActivePowerLimit;
-
   DeviceConfigurationClient dcc;
   const EebusError err = DeviceConfigurationClientConstruct(&dcc, use_case->local_entity, remote_entity);
   if (err != kEebusErrorOk) {
@@ -217,7 +205,7 @@ EebusError EgLpcSetFailsafeConsumptionActivePowerLimitInternal(
   }
 
   const DeviceConfigurationKeyValueDescriptionDataType filter = {
-      .key_name = &key_name,
+      .key_name = &self->failsafe_power_limit_key,
   };
 
   const DeviceConfigurationKeyValueDescriptionDataType* const description
@@ -245,8 +233,8 @@ EebusError EgLpcSetFailsafeConsumptionActivePowerLimitInternal(
   return DeviceConfigurationClientWriteKeyValueList(&dcc, &key_value_list);
 }
 
-EebusError EgLpcSetFailsafeConsumptionActivePowerLimit(
-    EgLpcUseCaseObject* self,
+EebusError EgLpSetFailsafeActivePowerLimit(
+    EgLpUseCaseObject* self,
     const EntityAddressType* remote_entity_addr,
     const ScaledValue* power_limit
 ) {
@@ -259,14 +247,14 @@ EebusError EgLpcSetFailsafeConsumptionActivePowerLimit(
   EebusError err = kEebusErrorOk;
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  err = EgLpcSetFailsafeConsumptionActivePowerLimitInternal(EG_LPC_USE_CASE(self), remote_entity_addr, power_limit);
+  err = EgLpSetFailsafeActivePowerLimitInternal(EG_LP_USE_CASE(self), remote_entity_addr, power_limit);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 
   return err;
 }
 
-EebusError EgLpcGetFailsafeDurationMinimumInternal(
-    const EgLpcUseCase* self,
+EebusError EgLpGetFailsafeDurationMinimumInternal(
+    const EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     DurationType* duration
 ) {
@@ -296,8 +284,8 @@ EebusError EgLpcGetFailsafeDurationMinimumInternal(
   return DeviceConfigurationKeyValueGetDuration(key_value, duration);
 }
 
-EebusError EgLpcGetFailsafeDurationMinimum(
-    const EgLpcUseCaseObject* self,
+EebusError EgLpGetFailsafeDurationMinimum(
+    const EgLpUseCaseObject* self,
     const EntityAddressType* remote_entity_addr,
     DurationType* duration
 ) {
@@ -310,14 +298,14 @@ EebusError EgLpcGetFailsafeDurationMinimum(
   EebusError err = kEebusErrorOk;
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  err = EgLpcGetFailsafeDurationMinimumInternal(EG_LPC_USE_CASE(self), remote_entity_addr, duration);
+  err = EgLpGetFailsafeDurationMinimumInternal(EG_LP_USE_CASE(self), remote_entity_addr, duration);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 
   return err;
 }
 
-EebusError EgLpcSetFailsafeDurationMinimumInternal(
-    EgLpcUseCase* self,
+EebusError EgLpSetFailsafeDurationMinimumInternal(
+    EgLpUseCase* self,
     const EntityAddressType* remote_entity_addr,
     const EebusDuration* duration
 ) {
@@ -368,8 +356,8 @@ EebusError EgLpcSetFailsafeDurationMinimumInternal(
   return DeviceConfigurationClientWriteKeyValueList(&dcc, &key_value_list);
 }
 
-EebusError EgLpcSetFailsafeDurationMinimum(
-    EgLpcUseCaseObject* self,
+EebusError EgLpSetFailsafeDurationMinimum(
+    EgLpUseCaseObject* self,
     const EntityAddressType* remote_entity_addr,
     const EebusDuration* duration
 ) {
@@ -382,7 +370,7 @@ EebusError EgLpcSetFailsafeDurationMinimum(
   EebusError err = kEebusErrorOk;
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  err = EgLpcSetFailsafeDurationMinimumInternal(EG_LPC_USE_CASE(self), remote_entity_addr, duration);
+  err = EgLpSetFailsafeDurationMinimumInternal(EG_LP_USE_CASE(self), remote_entity_addr, duration);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 
   return err;
@@ -394,7 +382,7 @@ EebusError EgLpcSetFailsafeDurationMinimum(
 //
 //-------------------------------------------------------------------------------------------//
 
-void EgLpcStartHeartbeat(EgLpcUseCaseObject* self) {
+void EgLpStartHeartbeat(EgLpUseCaseObject* self) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
@@ -406,7 +394,7 @@ void EgLpcStartHeartbeat(EgLpcUseCaseObject* self) {
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 }
 
-void EgLpcStopHeartbeat(EgLpcUseCaseObject* self) {
+void EgLpStopHeartbeat(EgLpUseCaseObject* self) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
@@ -418,7 +406,7 @@ void EgLpcStopHeartbeat(EgLpcUseCaseObject* self) {
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 }
 
-bool EgLpcIsHeartbeatWithinDuration(EgLpcUseCaseObject* self) {
+bool EgLpIsHeartbeatWithinDuration(EgLpUseCaseObject* self) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);

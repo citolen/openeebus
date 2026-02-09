@@ -79,9 +79,10 @@ target_sources(
   ${MAIN_PROJ_SOURCES_PATH}/spine/node_management/node_management_subscription.c
   ${MAIN_PROJ_SOURCES_PATH}/spine/node_management/node_management_usecase.c
   ${MAIN_PROJ_SOURCES_PATH}/spine/subscription/subscription_manager.c
-  ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/eg/lpc/eg_lpc_events.c
-  ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/eg/lpc/eg_lpc_public.c
   ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/eg/lpc/eg_lpc.c
+  ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/eg/eg_lp_events.c
+  ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/eg/eg_lp_public.c
+  ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/eg/eg_lp.c
   ${MAIN_PROJ_SOURCES_PATH}/use_case/actor/common/load_control.c
   ${MAIN_PROJ_SOURCES_PATH}/use_case/model/load_limit_types.c
   ${MAIN_PROJ_SOURCES_PATH}/use_case/model/scaled_value.c
@@ -98,7 +99,7 @@ target_sources(
   # Mocks sources
   ${MOCKS_SOURCES_PATH}/ship/ship_connection/data_writer_mock.cpp
   ${MOCKS_SOURCES_PATH}/common/eebus_timer/eebus_timer_mock.cpp
-  ${MOCKS_SOURCES_PATH}/use_case/api/eg_lpc_listener_mock.cpp
+  ${MOCKS_SOURCES_PATH}/use_case/api/eg_lp_listener_mock.cpp
 
   # Test helpers
   ${CMAKE_SOURCE_DIR}/src/spine/function_data.c

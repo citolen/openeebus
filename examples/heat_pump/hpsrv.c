@@ -50,8 +50,8 @@ struct Hpsrv {
 
   EebusServiceConfig* cfg;
   EebusServiceObject* service;
-  CsLpcListenerObject* cs_lpc_listener;
-  CsLpcUseCaseObject* cs_lpc;
+  CsLpListenerObject* cs_lpc_listener;
+  CsLpUseCaseObject* cs_lpc;
   MuMpcUseCaseObject* mu_mpc;
   EebusCliObject* cli;
 };

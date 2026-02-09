@@ -15,24 +15,24 @@
  */
 /**
  * @file
- * @brief Energy Guard LPC events handling implementation
+ * @brief Energy Guard LP events handling implementation
  */
 
 #include "src/spine/events/events.h"
 #include "src/spine/model/device_diagnosis_types.h"
-#include "src/use_case/actor/eg/lpc/eg_lpc_internal.h"
+#include "src/use_case/actor/eg/eg_lp_internal.h"
 #include "src/use_case/specialization/device_configuration/device_configuration_client.h"
 #include "src/use_case/specialization/device_diagnosis/device_diagnosis_client.h"
 #include "src/use_case/specialization/load_control/load_control_client.h"
 
-static void OnLoadControlLimitDataUpdate(EgLpcUseCase* self, const EventPayload* payload);
-static void OnConfigurationDataUpdate(const EgLpcUseCase* self, const EventPayload* payload);
-static void OnHeartbeat(const EgLpcUseCase* self, const EventPayload* payload);
-static void OnDataChange(EgLpcUseCase* self, const EventPayload* payload);
-static void OnEntityAdded(const EgLpcUseCase* self, const EventPayload* payload);
-static void OnEntityRemoved(const EgLpcUseCase* self, const EventPayload* payload);
+static void OnLoadControlLimitDataUpdate(EgLpUseCase* self, const EventPayload* payload);
+static void OnConfigurationDataUpdate(const EgLpUseCase* self, const EventPayload* payload);
+static void OnHeartbeat(const EgLpUseCase* self, const EventPayload* payload);
+static void OnDataChange(EgLpUseCase* self, const EventPayload* payload);
+static void OnEntityAdded(const EgLpUseCase* self, const EventPayload* payload);
+static void OnEntityRemoved(const EgLpUseCase* self, const EventPayload* payload);
 
-void OnEntityAddedHandleLoadControl(const EgLpcUseCase* self, EntityRemoteObject* entity) {
+void OnEntityAddedHandleLoadControl(const EgLpUseCase* self, EntityRemoteObject* entity) {
   const UseCase* const use_case = USE_CASE(self);
 
   LoadControlClient load_control;
@@ -52,14 +52,14 @@ void OnEntityAddedHandleLoadControl(const EgLpcUseCase* self, EntityRemoteObject
   // Get descriptions
   const LoadControlLimitDescriptionListDataSelectorsType selectors = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
   LoadControlClientRequestLimitDescriptions(&load_control, &selectors, NULL);
 }
 
-void OnEntityAddedHandleDeviceConfiguration(const EgLpcUseCase* self, EntityRemoteObject* entity) {
+void OnEntityAddedHandleDeviceConfiguration(const EgLpUseCase* self, EntityRemoteObject* entity) {
   const UseCase* const use_case = USE_CASE(self);
 
   DeviceConfigurationClient device_configuraton;
@@ -82,7 +82,7 @@ void OnEntityAddedHandleDeviceConfiguration(const EgLpcUseCase* self, EntityRemo
   DeviceConfigurationClientRequestKeyValueDescription(&device_configuraton, NULL, NULL);
 }
 
-void OnEntityAddedHandleDeviceDiagnosis(const EgLpcUseCase* self, EntityRemoteObject* entity) {
+void OnEntityAddedHandleDeviceDiagnosis(const EgLpUseCase* self, EntityRemoteObject* entity) {
   const UseCase* const use_case = USE_CASE(self);
 
   DeviceDiagnosisClient device_diagnosis;
@@ -99,11 +99,8 @@ void OnEntityAddedHandleDeviceDiagnosis(const EgLpcUseCase* self, EntityRemoteOb
   DeviceDiagnosisClientRequestHeartbeat(&device_diagnosis);
 }
 
-void OnEntityAdded(const EgLpcUseCase* self, const EventPayload* payload) {
+void OnEntityAdded(const EgLpUseCase* self, const EventPayload* payload) {
   EntityRemoteObject* entity = payload->entity;
-  if (entity == NULL) {
-    return;
-  }
 
   if (!USE_CASE_IS_USE_CASE_COMPATIBLE(USE_CASE_OBJECT(self), payload->use_case_filter)) {
     return;
@@ -114,29 +111,26 @@ void OnEntityAdded(const EgLpcUseCase* self, const EventPayload* payload) {
   OnEntityAddedHandleDeviceConfiguration(self, entity);
   OnEntityAddedHandleDeviceDiagnosis(self, entity);
 
-  if (self->eg_lpc_listener != NULL) {
+  if (self->eg_lp_listener != NULL) {
     const EntityAddressType* const entity_addr = ENTITY_GET_ADDRESS(ENTITY_OBJECT(entity));
-    EG_LPC_LISTENER_ON_REMOTE_ENTITY_CONNECT(self->eg_lpc_listener, entity_addr);
+    EG_LP_LISTENER_ON_REMOTE_ENTITY_CONNECT(self->eg_lp_listener, entity_addr);
   }
 }
 
-void OnEntityRemoved(const EgLpcUseCase* self, const EventPayload* payload) {
+void OnEntityRemoved(const EgLpUseCase* self, const EventPayload* payload) {
   EntityRemoteObject* entity = payload->entity;
-  if (entity == NULL) {
-    return;
-  }
 
   if (!USE_CASE_IS_USE_CASE_COMPATIBLE(USE_CASE_OBJECT(self), payload->use_case_filter)) {
     return;
   }
 
-  if (self->eg_lpc_listener != NULL) {
+  if (self->eg_lp_listener != NULL) {
     const EntityAddressType* const entity_addr = ENTITY_GET_ADDRESS(ENTITY_OBJECT(entity));
-    EG_LPC_LISTENER_ON_REMOTE_ENTITY_DISCONNECT(self->eg_lpc_listener, entity_addr);
+    EG_LP_LISTENER_ON_REMOTE_ENTITY_DISCONNECT(self->eg_lp_listener, entity_addr);
   }
 }
 
-void OnLoadControlLimitDescriptionDataUpdate(const EgLpcUseCase* self, const EventPayload* payload) {
+void OnLoadControlLimitDescriptionDataUpdate(const EgLpUseCase* self, const EventPayload* payload) {
   const UseCase* const use_case = USE_CASE(self);
 
   LoadControlClient lcc;
@@ -147,7 +141,7 @@ void OnLoadControlLimitDescriptionDataUpdate(const EgLpcUseCase* self, const Eve
   // Get values
   const LoadControlLimitDescriptionDataType filter = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
@@ -165,7 +159,7 @@ void OnLoadControlLimitDescriptionDataUpdate(const EgLpcUseCase* self, const Eve
   LoadControlClientRequestLimitData(&lcc, &selectors, NULL);
 }
 
-void OnLoadControlLimitDataUpdate(EgLpcUseCase* self, const EventPayload* payload) {
+void OnLoadControlLimitDataUpdate(EgLpUseCase* self, const EventPayload* payload) {
   const UseCase* const use_case = USE_CASE(self);
 
   LoadControlClient load_control;
@@ -175,7 +169,7 @@ void OnLoadControlLimitDataUpdate(EgLpcUseCase* self, const EventPayload* payloa
 
   const LoadControlLimitDescriptionDataType filter = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
@@ -186,13 +180,13 @@ void OnLoadControlLimitDataUpdate(EgLpcUseCase* self, const EventPayload* payloa
   LoadLimit limit;
   const EntityAddressType* entity_addr = ENTITY_GET_ADDRESS(ENTITY_OBJECT(payload->entity));
 
-  EebusError ret = EgLpcGetActivePowerConsumptionLimitInternal(self, entity_addr, &limit);
+  EebusError ret = EgLpGetActivePowerLimitInternal(self, entity_addr, &limit);
   if (ret == kEebusErrorOk) {
-    EG_LPC_LISTENER_ON_POWER_LIMIT_RECEIVE(self->eg_lpc_listener, &limit.value, &limit.duration, limit.is_active);
+    EG_LP_LISTENER_ON_POWER_LIMIT_RECEIVE(self->eg_lp_listener, &limit.value, &limit.duration, limit.is_active);
   }
 }
 
-void OnConfigurationDescriptionDataUpdate(const EgLpcUseCase* self, const EventPayload* payload) {
+void OnConfigurationDescriptionDataUpdate(const EgLpUseCase* self, const EventPayload* payload) {
   const UseCase* const use_case = USE_CASE(self);
 
   DeviceConfigurationClient dcc;
@@ -204,7 +198,7 @@ void OnConfigurationDescriptionDataUpdate(const EgLpcUseCase* self, const EventP
   DeviceConfigurationClientRequestKeyValue(&dcc, NULL, NULL);
 }
 
-void OnConfigurationDataUpdate(const EgLpcUseCase* self, const EventPayload* payload) {
+void OnConfigurationDataUpdate(const EgLpUseCase* self, const EventPayload* payload) {
   const UseCase* const use_case = USE_CASE(self);
 
   DeviceConfigurationClient dcc;
@@ -212,22 +206,22 @@ void OnConfigurationDataUpdate(const EgLpcUseCase* self, const EventPayload* pay
     return;
   }
 
-  DeviceConfigurationKeyValueDescriptionDataType filter = {
-      .key_name = &(DeviceConfigurationKeyNameType){kDeviceConfigurationKeyNameTypeFailsafeConsumptionActivePowerLimit},
-  };
-
-  if (self->eg_lpc_listener == NULL) {
+  if (self->eg_lp_listener == NULL) {
     return;
   }
+
+  DeviceConfigurationKeyValueDescriptionDataType filter = {
+      .key_name = &self->failsafe_power_limit_key,
+  };
 
   const DeviceConfigurationKeyValueListDataType* const key_value_list = payload->function_data;
   if (DeviceConfigurationCommonCheckKeyValueWithFilter(&dcc.device_cfg_common, key_value_list, &filter)) {
     const EntityAddressType* const entity_addr = ENTITY_GET_ADDRESS(ENTITY_OBJECT(payload->entity));
 
     ScaledValue power_limit = {0};
-    const EebusError err    = EgLpcGetFailsafeConsumptionActivePowerLimitInternal(self, entity_addr, &power_limit);
+    const EebusError err    = EgLpGetFailsafeActivePowerLimitInternal(self, entity_addr, &power_limit);
     if (err == kEebusErrorOk) {
-      EG_LPC_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(self->eg_lpc_listener, &power_limit);
+      EG_LP_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(self->eg_lp_listener, &power_limit);
     }
   }
 
@@ -237,15 +231,15 @@ void OnConfigurationDataUpdate(const EgLpcUseCase* self, const EventPayload* pay
     const EntityAddressType* const entity_addr = ENTITY_GET_ADDRESS(ENTITY_OBJECT(payload->entity));
 
     DurationType duration = {0};
-    const EebusError err  = EgLpcGetFailsafeDurationMinimumInternal(self, entity_addr, &duration);
+    const EebusError err  = EgLpGetFailsafeDurationMinimumInternal(self, entity_addr, &duration);
 
     if (err == kEebusErrorOk) {
-      EG_LPC_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(self->eg_lpc_listener, &duration);
+      EG_LP_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(self->eg_lp_listener, &duration);
     }
   }
 }
 
-void OnHeartbeat(const EgLpcUseCase* self, const EventPayload* payload) {
+void OnHeartbeat(const EgLpUseCase* self, const EventPayload* payload) {
   if ((payload->cmd_classifier == NULL) && (*payload->cmd_classifier == kCommandClassifierTypeNotify)) {
     return;
   }
@@ -255,12 +249,12 @@ void OnHeartbeat(const EgLpcUseCase* self, const EventPayload* payload) {
     return;
   }
 
-  if (self->eg_lpc_listener != NULL) {
-    EG_LPC_LISTENER_ON_HEARTBEAT_RECEIVE(self->eg_lpc_listener, *data->heartbeat_counter);
+  if (self->eg_lp_listener != NULL) {
+    EG_LP_LISTENER_ON_HEARTBEAT_RECEIVE(self->eg_lp_listener, *data->heartbeat_counter);
   }
 }
 
-void OnDataChange(EgLpcUseCase* self, const EventPayload* payload) {
+void OnDataChange(EgLpUseCase* self, const EventPayload* payload) {
   switch (payload->function_type) {
     case kFunctionTypeLoadControlLimitDescriptionListData:
       OnLoadControlLimitDescriptionDataUpdate(self, payload);
@@ -280,20 +274,20 @@ void OnDataChange(EgLpcUseCase* self, const EventPayload* payload) {
   }
 }
 
-void EgLpcHandleEvent(const EventPayload* payload, void* ctx) {
-  EgLpcUseCase* eg_lpc_use_case = (EgLpcUseCase*)ctx;
+void EgLpHandleEvent(const EventPayload* payload, void* ctx) {
+  EgLpUseCase* eg_lp_use_case = (EgLpUseCase*)ctx;
 
-  if (!USE_CASE_IS_ENTITY_COMPATIBLE(USE_CASE_OBJECT(eg_lpc_use_case), payload->entity)) {
+  if (!USE_CASE_IS_ENTITY_COMPATIBLE(USE_CASE_OBJECT(eg_lp_use_case), payload->entity)) {
     return;
   }
 
   if (payload->event_type == kEventTypeUseCaseChange) {
     if (payload->change_type == kElementChangeAdd) {
-      OnEntityAdded(eg_lpc_use_case, payload);
+      OnEntityAdded(eg_lp_use_case, payload);
     } else if (payload->change_type == kElementChangeRemove) {
-      OnEntityRemoved(eg_lpc_use_case, payload);
+      OnEntityRemoved(eg_lp_use_case, payload);
     }
   } else if ((payload->event_type == kEventTypeDataChange) || (payload->change_type == kElementChangeUpdate)) {
-    OnDataChange(eg_lpc_use_case, payload);
+    OnDataChange(eg_lp_use_case, payload);
   }
 }

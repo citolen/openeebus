@@ -98,7 +98,7 @@ INSTANTIATE_TEST_SUITE_P(
             .txt_record      = "\012txtvers=1",
             .txt_record_size = 012,
             .ret             = kEebusErrorParse,
-            .txtvers         = "1",
+            .txtvers         = nullptr,
         },
         MdnsEntrySetResolveInfoTestInput{
             .description = "Test txt buffer underrun"sv,

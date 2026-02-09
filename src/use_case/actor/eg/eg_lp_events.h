@@ -15,11 +15,11 @@
  */
 /**
  * @file
- * @brief Controllable System LPC events handling
+ * @brief Energy Guard Limitation of Power events handling
  */
 
-#ifndef SRC_USE_CASE_CONTROLLABLE_SYSTEM_LPC_CS_LPC_EVENTS_H_
-#define SRC_USE_CASE_CONTROLLABLE_SYSTEM_LPC_CS_LPC_EVENTS_H_
+#ifndef SRC_USE_CASE_ACTOR_EG_EG_LP_EVENTS_H_
+#define SRC_USE_CASE_ACTOR_EG_EG_LP_EVENTS_H_
 
 #include "src/spine/events/events.h"
 
@@ -27,10 +27,10 @@
 extern "C" {
 #endif  // __cplusplus
 
-void CsLpcHandleEvent(const EventPayload* payload, void* ctx);
+void EgLpHandleEvent(const EventPayload* payload, void* ctx);
 
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
 
-#endif  // SRC_USE_CASE_CONTROLLABLE_SYSTEM_LPC_CS_LPC_EVENTS_H_
+#endif  // SRC_USE_CASE_ACTOR_EG_EG_LP_EVENTS_H_

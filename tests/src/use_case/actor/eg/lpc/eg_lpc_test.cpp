@@ -27,7 +27,7 @@
 
 #include "mocks/common/eebus_timer/eebus_timer_mock.h"
 #include "mocks/ship/ship_connection/data_writer_mock.h"
-#include "mocks/use_case/api/eg_lpc_listener_mock.h"
+#include "mocks/use_case/api/eg_lp_listener_mock.h"
 #include "src/common/array_util.h"
 #include "src/common/eebus_malloc.h"
 #include "src/common/eebus_timer/eebus_timer.h"
@@ -73,8 +73,8 @@ class EgLpcTestFixture : public UseCaseTestFixture {
         kHeartbeatTimeout
     );
 
-    eg_lpc_listener_mock_.reset(EgLpcListenerMockCreate());
-    use_case_.reset(EgLpcUseCaseCreate(entity, EG_LPC_LISTENER_OBJECT(eg_lpc_listener_mock_.get())));
+    eg_lpc_listener_mock_.reset(EgLpListenerMockCreate());
+    use_case_.reset(EgLpcUseCaseCreate(entity, EG_LP_LISTENER_OBJECT(eg_lpc_listener_mock_.get())));
 
     DEVICE_LOCAL_ADD_ENTITY(device_local_.get(), entity);
   };
@@ -86,12 +86,12 @@ class EgLpcTestFixture : public UseCaseTestFixture {
   };
 
  protected:
-  std::unique_ptr<EgLpcListenerMock, decltype(&EgLpcListenerMockDelete)> eg_lpc_listener_mock_{
+  std::unique_ptr<EgLpListenerMock, decltype(&EgLpListenerMockDelete)> eg_lpc_listener_mock_{
       nullptr,
-      EgLpcListenerMockDelete
+      EgLpListenerMockDelete
   };
 
-  std::unique_ptr<EgLpcUseCaseObject, decltype(&EgLpcUseCaseDelete)> use_case_{nullptr, EgLpcUseCaseDelete};
+  std::unique_ptr<EgLpUseCaseObject, decltype(&EgLpUseCaseDelete)> use_case_{nullptr, EgLpUseCaseDelete};
 };
 
 TEST_F(EgLpcTestFixture, EgLpcTest) {

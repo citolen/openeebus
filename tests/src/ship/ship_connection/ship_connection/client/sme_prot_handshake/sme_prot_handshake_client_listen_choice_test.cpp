@@ -55,13 +55,9 @@ TEST_P(
     ProtHandshakeClientListenChoiceBadMessageFormatReceivedTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  char* const s = JsonUnformat(GetParam().msg);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s, GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Send message to queue
@@ -135,13 +131,9 @@ TEST_P(
     ProtHandshakeClientListenChoiceMessageContentCheckTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  char* const s = JsonUnformat(GetParam().msg);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s, GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 
@@ -223,13 +215,9 @@ TEST_P(
     ProtHandshakeClientListenChoiceVersionMessageSendTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  char* const s = JsonUnformat(GetParam().msg);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s, GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 
@@ -240,7 +228,7 @@ TEST_P(
   EXPECT_CALL(*prr_timer_mock->gmock, Stop(sc.prolongation_request_reply_timer));
 
   // Expect message send function calls
-  const size_t msg_len       = strlen(s) + 1;
+  const size_t msg_len       = msg_buf.data_size - 1;
   const size_t ret_num_bytes = GetParam().msg_send_successful ? msg_len : 0;
   EXPECT_CALL(*websocket_mock->gmock, Write(sc.websocket, _, msg_len))
       .WillOnce(Return(static_cast<int32_t>(ret_num_bytes)));

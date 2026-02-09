@@ -56,13 +56,9 @@ TEST_P(
     ProtHandshakeServerListenProposalWrongMessageReceivedTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Add message to buffer
@@ -136,13 +132,9 @@ TEST_P(
     ProtHandshakeServerListenProposalMessageContentErrorTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Send message to queue
@@ -211,13 +203,9 @@ TEST_P(
     ProtHandshakeServerListenProposalAgreementMessageSendTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Send message to queue
@@ -231,7 +219,7 @@ TEST_P(
                                                   ]})"sv;
 
   std::unique_ptr<char[], decltype(&JsonFree)> version_msg(JsonUnformat(version_agreement_msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
+  ASSERT_NE(version_msg, nullptr) << "Wrong test input!";
 
   const size_t version_agreement_msg_size = strlen(version_msg.get()) + 1;
   const size_t ret_num_bytes              = GetParam().msg_send_successful ? version_agreement_msg_size : 0;

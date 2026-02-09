@@ -1,4 +1,4 @@
-EgLpcListener
+EgLpListener
 void Destruct()
 void OnRemoteEntityConnect(const EntityAddressType* entity_addr)
 void OnRemoteEntityDisconnect(const EntityAddressType* entity_addr)

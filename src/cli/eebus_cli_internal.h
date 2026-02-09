@@ -27,16 +27,16 @@
 extern "C" {
 #endif  // __cplusplus
 
+typedef struct EgLpCli EgLpCli;
+
 typedef struct EebusCli EebusCli;
 
 struct EebusCli {
   /** Implements the EEBUS CLI Interface */
   EebusCliObject obj;
 
-  /** EG LPC instance to deal with */
-  EgLpcUseCaseObject* eg_lpc;
-  /** EG LPC remote entity address to communicate with */
-  const EntityAddressType* eg_lpc_entity_addr;
+  /** EG LPC CLI instance to deal with */
+  EgLpCli* eg_lpc_cli;
 
   /** MA MPC instance to deal with */
   MaMpcUseCaseObject* ma_mpc;

@@ -55,13 +55,9 @@ std::ostream& operator<<(std::ostream& os, const ShipSmeHelloPendingListenTestIn
 
 TEST_P(ShipConnectionHelloStatePendingListenAbortTests, SmeHelloPendingListenAbortTest) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Add message to queue
@@ -112,13 +108,9 @@ TEST_P(
     SmeHelloPendingListenEvalueateMessageReadyPhaseTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 
@@ -190,13 +182,9 @@ TEST_P(
     SmeHelloReadyListenEvaluatePendingMessageTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 

@@ -25,17 +25,17 @@
 
 #include "examples/hems/hems.h"
 #include "src/common/eebus_malloc.h"
-#include "src/use_case/api/eg_lpc_listener_interface.h"
+#include "src/use_case/api/eg_lp_listener_interface.h"
 
-EgLpcListenerObject* EgLpcListenerCreate(HemsObject* hems);
+EgLpListenerObject* EgLpcListenerCreate(HemsObject* hems);
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-static inline void EgLpcListenerDelete(EgLpcListenerObject* eg_lpc_listener) {
+static inline void EgLpcListenerDelete(EgLpListenerObject* eg_lpc_listener) {
   if (eg_lpc_listener != NULL) {
-    EG_LPC_LISTENER_DESTRUCT(eg_lpc_listener);
+    EG_LP_LISTENER_DESTRUCT(eg_lpc_listener);
     EEBUS_FREE(eg_lpc_listener);
   }
 }

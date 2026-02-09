@@ -43,20 +43,16 @@ std::ostream& operator<<(std::ostream& os, const ShipConnectionAccessMethodsInit
 
 TEST_P(ShipConnectionAccessMethodsInitTests, ShipConnectionAccessMethodsInitMessageSendTest) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message bufer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Add message to queue
   queue_msg.type = GetParam().queue_msg_type;
   EEBUS_QUEUE_SEND(sc.msg_queue, &queue_msg, sizeof(queue_msg));
 
-  const size_t msg_size      = strlen(s.get()) + 1;
+  const size_t msg_size      = queue_msg.msg_buf.data_size - 1;
   const size_t ret_num_bytes = GetParam().msg_send_successful ? msg_size : 0;
   EXPECT_CALL(*websocket_mock->gmock, Write(sc.websocket, _, msg_size))
       .WillOnce(Return(static_cast<int32_t>(ret_num_bytes)));

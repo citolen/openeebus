@@ -40,7 +40,7 @@
 #include "src/ship/tls_certificate/tls_certificate.h"
 #include "src/ship/websocket/websocket_debug.h"
 
-static const size_t kWriteQueueSize = 25;
+static const size_t kWriteQueueSize = 50;
 
 typedef struct WriteMessage WriteMessage;
 

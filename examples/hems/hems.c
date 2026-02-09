@@ -47,8 +47,8 @@ struct Hems {
 
   EebusServiceConfig* cfg;
   EebusServiceObject* service;
-  EgLpcUseCaseObject* eg_lpc;
-  EgLpcListenerObject* eg_lpc_listener;
+  EgLpUseCaseObject* eg_lpc;
+  EgLpListenerObject* eg_lpc_listener;
   MaMpcUseCaseObject* ma_mpc;
   MaMpcListenerObject* ma_mpc_listener;
   EebusCliObject* cli;
@@ -286,7 +286,7 @@ void HemsSetEgLpcRemoteEntity(HemsObject* self, const EntityAddressType* entity_
     return;
   }
 
-  EgLpcUseCaseObject* const eg_lpc = (entity_addr == NULL) ? NULL : hems->eg_lpc;
+  EgLpUseCaseObject* const eg_lpc = (entity_addr == NULL) ? NULL : hems->eg_lpc;
   EEBUS_CLI_SET_EG_LPC(hems->cli, eg_lpc, entity_addr);
 }
 

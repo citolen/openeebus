@@ -182,7 +182,7 @@ EebusError MdnsEntryParseTxtRecord(MdnsEntry* entry, const char* txt_record, uin
 
   while (bytes_left > 0) {
     const size_t record_size = *(const uint8_t*)record_ptr;
-    if ((record_size > bytes_left) || (record_size < 3)) {
+    if ((record_size >= bytes_left) || (record_size < 3)) {
       return kEebusErrorParse;
     }
 

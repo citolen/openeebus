@@ -44,19 +44,14 @@ TEST_P(ShipConnectionPinCheckInitTests, SmePinCheckInit) {
   // Arrange:
   // Set initial SME state
   SetShipConnectionState(kSmePinStateCheckInit);
-
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 
   // Calculate message length and expect message to be sent or not
-  const size_t msg_size      = strlen(s.get()) + 1;
+  const size_t msg_size      = msg_buf.data_size - 1;
   const size_t ret_num_bytes = GetParam().msg_send_successful ? msg_size : 0;
   EXPECT_CALL(*websocket_mock->gmock, Write(sc.websocket, _, msg_size))
       .WillOnce(Return(static_cast<int32_t>(ret_num_bytes)));

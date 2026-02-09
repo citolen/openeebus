@@ -32,13 +32,18 @@ void FeatureAddressContainerDestruct(FeatureAddressContainer* self) {
 }
 
 void FeatureAddressContainerAdd(FeatureAddressContainer* self, const FeatureAddressType* addr) {
+  if (FeatureAddressContainerFind(self, addr) != NULL) {
+    // Address already exists in the container, do not add it again
+    return;
+  }
+
   FeatureAddressType* const addr_copy = FeatureAddressCopy(addr);
   VectorPushBack(&self->addresses, addr_copy);
 }
 
 void FeatureAddressContainerRemove(FeatureAddressContainer* self, const FeatureAddressType* addr) {
-  const FeatureAddressType* addr_el = NULL;
-  while ((addr_el = FeatureAddressContainerFind(self, addr)) != NULL) {
+  const FeatureAddressType* addr_el = FeatureAddressContainerFind(self, addr);
+  if (addr_el != NULL) {
     VectorRemove(&self->addresses, (void*)addr_el);
     FeatureAddressDelete((FeatureAddressType*)addr_el);
   }

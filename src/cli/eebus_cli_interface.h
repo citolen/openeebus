@@ -23,7 +23,7 @@
 
 #include "src/common/eebus_malloc.h"
 #include "src/spine/model/entity_types.h"
-#include "src/use_case/actor/eg/lpc/eg_lpc.h"
+#include "src/use_case/actor/eg/eg_lp.h"
 #include "src/use_case/actor/ma/mpc/ma_mpc.h"
 #include "src/use_case/actor/mu/mpc/mu_mpc.h"
 
@@ -61,7 +61,7 @@ struct EebusCliInterface {
    */
   void (*set_eg_lpc)(
       EebusCliObject* self,
-      EgLpcUseCaseObject* eg_lpc_use_case,
+      EgLpUseCaseObject* eg_lpc_use_case,
       const EntityAddressType* remote_entity_address
   );
   /**

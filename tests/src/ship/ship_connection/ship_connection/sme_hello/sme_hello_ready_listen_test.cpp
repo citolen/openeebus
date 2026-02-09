@@ -52,13 +52,9 @@ std::ostream& operator<<(std::ostream& os, const ShipSmeHelloReadyListenTestInpu
 
 TEST_P(ShipConnectionHelloStateReadyListenAbortTests, SmeHelloReadyListenAbortTest) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   ShipConnectionQueueMessage queue_msg;
-  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&queue_msg.msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
 
   // Add message to queue
@@ -108,13 +104,9 @@ TEST_P(
     SmeHelloReadyListenEvaluateReadyAndAbortMessageTest
 ) {
   // Arrange:
-  // Unformat JSON message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 
@@ -125,7 +117,7 @@ TEST_P(
   EXPECT_CALL(*prr_timer_mock->gmock, Stop(sc.prolongation_request_reply_timer));
 
   // Calculate message size
-  const size_t msg_size      = strlen(s.get()) + 1;
+  const size_t msg_size      = msg_buf.data_size - 1;
   const size_t ret_num_bytes = GetParam().msg_send_successful ? msg_size : 0;
   EXPECT_CALL(
       *ifp_mock->gmock,
@@ -165,13 +157,9 @@ TEST_P(
     SmeHelloReadyListenEvaluatePendingMessageTest
 ) {
   // Arrange:
-  // Unformat message
-  std::unique_ptr<char[], decltype(&JsonFree)> s(JsonUnformat(GetParam().msg), JsonFree);
-  ASSERT_NE(s, nullptr) << "Wrong test input!";
-
   // Init message buffer
   MessageBuffer msg_buf  = {0};
-  const EebusError error = MessageBufferInitHelper(&msg_buf, s.get(), GetParam().msg.size());
+  const EebusError error = MessageBufferInitHelper(&msg_buf, GetParam().msg);
   ASSERT_EQ(error, kEebusErrorOk) << "Wrong test input!";
   ShipConnectionWebsocketCallback(kWebsocketCallbackTypeRead, msg_buf.data, msg_buf.data_size, &sc);
 

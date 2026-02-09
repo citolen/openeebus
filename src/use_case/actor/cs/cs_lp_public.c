@@ -24,8 +24,8 @@
 #include "src/spine/model/loadcontrol_types.h"
 #include "src/spine/model/model.h"
 #include "src/use_case/actor/common/load_control.h"
-#include "src/use_case/actor/cs/lpc/cs_lpc.h"
-#include "src/use_case/actor/cs/lpc/cs_lpc_internal.h"
+#include "src/use_case/actor/cs/cs_lp.h"
+#include "src/use_case/actor/cs/cs_lp_internal.h"
 #include "src/use_case/model/load_limit_types.h"
 #include "src/use_case/specialization/device_configuration/device_configuration_server.h"
 #include "src/use_case/specialization/electrical_connection/electrical_connection_server.h"
@@ -37,7 +37,8 @@
 // Scenario 1
 //
 //-------------------------------------------------------------------------------------------//
-EebusError GetLimitId(LoadControlServer* load_control_server, LoadControlLimitIdType* limit_id) {
+EebusError
+CsLpGetLimitId(const CsLpUseCase* self, LoadControlServer* load_control_server, LoadControlLimitIdType* limit_id) {
   if ((load_control_server == NULL) || (limit_id == NULL)) {
     return kEebusErrorInputArgumentNull;
   }
@@ -45,7 +46,7 @@ EebusError GetLimitId(LoadControlServer* load_control_server, LoadControlLimitId
   const LoadControlLimitDescriptionDataType filter = {
       .limit_type      = &(LoadControlLimitTypeType){kLoadControlLimitTypeTypeSignDependentAbsValueLimit},
       .limit_category  = &(LoadControlCategoryType){kLoadControlCategoryTypeObligation},
-      .limit_direction = &(EnergyDirectionType){kEnergyDirectionTypeConsume},
+      .limit_direction = &self->energy_direction,
       .scope_type      = &(ScopeTypeType){kScopeTypeTypeActivePowerLimit},
   };
 
@@ -59,7 +60,7 @@ EebusError GetLimitId(LoadControlServer* load_control_server, LoadControlLimitId
   return kEebusErrorOk;
 }
 
-EebusError GetConsumptionLimitInternal(const CsLpcUseCase* self, LoadLimit* limit) {
+EebusError CsLpGetActivePowerLimitInternal(const CsLpUseCase* self, LoadLimit* limit) {
   UseCase* const use_case = USE_CASE(self);
 
   LoadControlServer lcs;
@@ -69,7 +70,7 @@ EebusError GetConsumptionLimitInternal(const CsLpcUseCase* self, LoadLimit* limi
   }
 
   LoadControlLimitIdType limit_id;
-  const EebusError limid_id_err = GetLimitId(&lcs, &limit_id);
+  const EebusError limid_id_err = CsLpGetLimitId(self, &lcs, &limit_id);
   if (limid_id_err != kEebusErrorOk) {
     return limid_id_err;
   }
@@ -80,17 +81,17 @@ EebusError GetConsumptionLimitInternal(const CsLpcUseCase* self, LoadLimit* limi
   return LoadLimitInitWithLoadControlLimitData(limit, limit_data);
 }
 
-EebusError GetConsumptionLimit(const CsLpcUseCaseObject* self, LoadLimit* limit) {
+EebusError CsLpGetActivePowerLimit(const CsLpUseCaseObject* self, LoadLimit* limit) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret = GetConsumptionLimitInternal(CS_LPC_USE_CASE(self), limit);
+  const EebusError ret = CsLpGetActivePowerLimitInternal(CS_LP_USE_CASE(self), limit);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
 
 EebusError
-SetConsumptionLimitInternal(CsLpcUseCase* self, int64_t limit, int8_t scale, bool is_active, bool is_changeable) {
+CsLpSetActivePowerLimitInternal(CsLpUseCase* self, const ScaledValue* limit, bool is_active, bool is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   LoadControlServer lcs;
@@ -100,7 +101,7 @@ SetConsumptionLimitInternal(CsLpcUseCase* self, int64_t limit, int8_t scale, boo
   }
 
   LoadControlLimitIdType limit_id;
-  const EebusError limid_id_err = GetLimitId(&lcs, &limit_id);
+  const EebusError limid_id_err = CsLpGetLimitId(self, &lcs, &limit_id);
   if (limid_id_err != kEebusErrorOk) {
     return limid_id_err;
   }
@@ -109,7 +110,7 @@ SetConsumptionLimitInternal(CsLpcUseCase* self, int64_t limit, int8_t scale, boo
   const LoadControlLimitDataType limit_data = {
       .is_limit_changeable = &(bool){is_changeable},
       .is_limit_active     = &(bool){is_active},
-      .value               = &(ScaledNumberType){.number = &limit, .scale = &scale},
+      .value               = &(ScaledNumberType){.number = &limit->value, .scale = &limit->scale},
   };
 
   const LoadControlLimitDescriptionDataType filter = {
@@ -124,11 +125,11 @@ SetConsumptionLimitInternal(CsLpcUseCase* self, int64_t limit, int8_t scale, boo
 }
 
 EebusError
-SetConsumptionLimit(CsLpcUseCaseObject* self, int64_t limit, int8_t scale, bool is_active, bool is_changeable) {
+CsLpSetActivePowerLimit(CsLpUseCaseObject* self, const ScaledValue* limit, bool is_active, bool is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret = SetConsumptionLimitInternal(CS_LPC_USE_CASE(self), limit, scale, is_active, is_changeable);
+  const EebusError ret = CsLpSetActivePowerLimitInternal(CS_LP_USE_CASE(self), limit, is_active, is_changeable);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
@@ -140,11 +141,8 @@ SetConsumptionLimit(CsLpcUseCaseObject* self, int64_t limit, int8_t scale, bool 
 // Scenario 2
 //
 //-------------------------------------------------------------------------------------------//
-EebusError GetFailsafeConsumptionActivePowerLimitInternal(
-    const CsLpcUseCase* self,
-    ScaledValue* power_limit,
-    bool* is_changeable
-) {
+EebusError
+CsLpGetFailsafeActivePowerLimitInternal(const CsLpUseCase* self, ScaledValue* power_limit, bool* is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   if ((power_limit == NULL) || (is_changeable == NULL)) {
@@ -158,7 +156,7 @@ EebusError GetFailsafeConsumptionActivePowerLimitInternal(
   }
 
   DeviceConfigurationKeyValueDescriptionDataType filter = {
-      .key_name = &(DeviceConfigurationKeyNameType){kDeviceConfigurationKeyNameTypeFailsafeConsumptionActivePowerLimit},
+      .key_name = &self->failsafe_power_limit_key,
   };
 
   const DeviceConfigurationKeyValueDataType* const key_data
@@ -179,18 +177,17 @@ EebusError GetFailsafeConsumptionActivePowerLimitInternal(
 }
 
 EebusError
-GetFailsafeConsumptionActivePowerLimit(const CsLpcUseCaseObject* self, ScaledValue* power_limit, bool* is_changeable) {
+CsLpGetFailsafeActivePowerLimit(const CsLpUseCaseObject* self, ScaledValue* power_limit, bool* is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret
-      = GetFailsafeConsumptionActivePowerLimitInternal(CS_LPC_USE_CASE(self), power_limit, is_changeable);
+  const EebusError ret = CsLpGetFailsafeActivePowerLimitInternal(CS_LP_USE_CASE(self), power_limit, is_changeable);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
 
 EebusError
-SetFailsafeConsumptionActivePowerLimitInternal(CsLpcUseCase* self, const ScaledValue* power_limit, bool is_changeable) {
+CsLpSetFailsafeActivePowerLimitInternal(CsLpUseCase* self, const ScaledValue* power_limit, bool is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   DeviceConfigurationServer dc      = {0};
@@ -211,24 +208,24 @@ SetFailsafeConsumptionActivePowerLimitInternal(CsLpcUseCase* self, const ScaledV
   };
 
   const DeviceConfigurationKeyValueDescriptionDataType filter = {
-      .key_name = &(DeviceConfigurationKeyNameType){kDeviceConfigurationKeyNameTypeFailsafeConsumptionActivePowerLimit},
+      .key_name = &self->failsafe_power_limit_key,
   };
 
   return DeviceConfigurationServerUpdateKeyValueWithFilter(&dc, &data, NULL, &filter);
 }
 
 EebusError
-SetFailsafeConsumptionActivePowerLimit(CsLpcUseCaseObject* self, const ScaledValue* power_limit, bool is_changeable) {
+CsLpSetFailsafeActivePowerLimit(CsLpUseCaseObject* self, const ScaledValue* power_limit, bool is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret
-      = SetFailsafeConsumptionActivePowerLimitInternal(CS_LPC_USE_CASE(self), power_limit, is_changeable);
+  const EebusError ret = CsLpSetFailsafeActivePowerLimitInternal(CS_LP_USE_CASE(self), power_limit, is_changeable);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
 
-EebusError GetFailsafeDurationMinimumInternal(const CsLpcUseCase* self, DurationType* duration, bool* is_changeable) {
+EebusError
+CsLpGetFailsafeDurationMinimumInternal(const CsLpUseCase* self, DurationType* duration, bool* is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   if ((duration == NULL) || (is_changeable == NULL)) {
@@ -259,16 +256,16 @@ EebusError GetFailsafeDurationMinimumInternal(const CsLpcUseCase* self, Duration
   return kEebusErrorOk;
 }
 
-EebusError GetFailsafeDurationMinimum(const CsLpcUseCaseObject* self, DurationType* duration, bool* is_changeable) {
+EebusError CsLpGetFailsafeDurationMinimum(const CsLpUseCaseObject* self, DurationType* duration, bool* is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret = GetFailsafeDurationMinimumInternal(CS_LPC_USE_CASE(self), duration, is_changeable);
+  const EebusError ret = CsLpGetFailsafeDurationMinimumInternal(CS_LP_USE_CASE(self), duration, is_changeable);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
 
-EebusError SetFailsafeDurationMinimumInternal(CsLpcUseCase* self, const DurationType* duration, bool is_changeable) {
+EebusError CsLpSetFailsafeDurationMinimumInternal(CsLpUseCase* self, const DurationType* duration, bool is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   // TODO: Add duration range check
@@ -298,11 +295,11 @@ EebusError SetFailsafeDurationMinimumInternal(CsLpcUseCase* self, const Duration
   return DeviceConfigurationServerUpdateKeyValueWithFilter(&dc, &data, NULL, &filter);
 }
 
-EebusError SetFailsafeDurationMinimum(CsLpcUseCaseObject* self, const DurationType* duration, bool is_changeable) {
+EebusError CsLpSetFailsafeDurationMinimum(CsLpUseCaseObject* self, const DurationType* duration, bool is_changeable) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret = SetFailsafeDurationMinimumInternal(CS_LPC_USE_CASE(self), duration, is_changeable);
+  const EebusError ret = CsLpSetFailsafeDurationMinimumInternal(CS_LP_USE_CASE(self), duration, is_changeable);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
@@ -312,7 +309,7 @@ EebusError SetFailsafeDurationMinimum(CsLpcUseCaseObject* self, const DurationTy
 // Scenario 3
 //
 //-------------------------------------------------------------------------------------------//
-void StartHeartbeat(CsLpcUseCaseObject* self) {
+void CsLpStartHeartbeat(CsLpUseCaseObject* self) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
@@ -324,7 +321,7 @@ void StartHeartbeat(CsLpcUseCaseObject* self) {
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 }
 
-void StopHeartbeat(CsLpcUseCaseObject* self) {
+void CsLpStopHeartbeat(CsLpUseCaseObject* self) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
@@ -336,13 +333,13 @@ void StopHeartbeat(CsLpcUseCaseObject* self) {
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
 }
 
-bool IsHeartbeatWithinDuration(CsLpcUseCaseObject* self) {
+bool CsLpIsHeartbeatWithinDuration(CsLpUseCaseObject* self) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
   bool ret = false;
 
-  const DeviceDiagnosisClient* const hdc = CS_LPC_USE_CASE(self)->heartbeat_diag_client;
+  const DeviceDiagnosisClient* const hdc = CS_LP_USE_CASE(self)->heartbeat_diag_client;
   if (hdc != NULL) {
     ret = DeviceDiagnosisCommonIsHeartbeatWithinDuration(&hdc->device_diag_common, &(DurationType){.minutes = 2});
   }
@@ -357,24 +354,21 @@ bool IsHeartbeatWithinDuration(CsLpcUseCaseObject* self) {
 //
 //-------------------------------------------------------------------------------------------//
 const ElectricalConnectionCharacteristicDataType*
-GetElectricalConnectionCharacteristics(const CsLpcUseCase* self, const ElectricalConnectionServer* ecs) {
+CsLpGetElectricalConnectionCharacteristics(const CsLpUseCase* self, const ElectricalConnectionServer* ecs) {
   ElectricalConnectionCharacteristicContextType characteristic_context
       = kElectricalConnectionCharacteristicContextTypeEntity;
 
-  ElectricalConnectionCharacteristicTypeType characteristic_type
-      = GetElectricalConnectionCharacteristicTypeInternal(self);
-
   ElectricalConnectionCharacteristicDataType filter = {
-      .electrical_connection_id = &(ElectricalConnectionIdType){0},
+      .electrical_connection_id = &self->electrical_connection_id,
       .parameter_id             = &(ElectricalConnectionParameterIdType){0},
       .characteristic_context   = &characteristic_context,
-      .characteristic_type      = &characteristic_type,
+      .characteristic_type      = &self->nominal_max_characteristic,
   };
 
   return ElectricalConnectionCommonGetCharacteristicWithFilter(&ecs->el_connection_common, &filter);
 }
 
-EebusError GetConsumptionNominalMaxInternal(const CsLpcUseCase* self, ScaledValue* nominal_max) {
+EebusError CsLpGetNominalMaxInternal(const CsLpUseCase* self, ScaledValue* nominal_max) {
   UseCase* const use_case = USE_CASE(self);
 
   if (nominal_max == NULL) {
@@ -388,7 +382,7 @@ EebusError GetConsumptionNominalMaxInternal(const CsLpcUseCase* self, ScaledValu
   }
 
   const ElectricalConnectionCharacteristicDataType* const characteristic
-      = GetElectricalConnectionCharacteristics(self, &ecs);
+      = CsLpGetElectricalConnectionCharacteristics(self, &ecs);
 
   if ((characteristic->characteristic_id == NULL) || (characteristic->value == NULL)) {
     return kEebusErrorNoChange;
@@ -397,16 +391,16 @@ EebusError GetConsumptionNominalMaxInternal(const CsLpcUseCase* self, ScaledValu
   return ScaledValueInitWithScaledNumber(nominal_max, characteristic->value);
 }
 
-EebusError GetConsumptionNominalMax(CsLpcUseCaseObject* self, ScaledValue* nominal_max) {
+EebusError CsLpGetNominalMax(CsLpUseCaseObject* self, ScaledValue* nominal_max) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret = GetConsumptionNominalMaxInternal(CS_LPC_USE_CASE(self), nominal_max);
+  const EebusError ret = CsLpGetNominalMaxInternal(CS_LP_USE_CASE(self), nominal_max);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
 
-EebusError SetConsumptionNominalMaxInternal(CsLpcUseCase* self, const ScaledValue* new_nominal_max) {
+EebusError CsLpSetNominalMaxInternal(CsLpUseCase* self, const ScaledValue* new_nominal_max) {
   UseCase* const use_case = USE_CASE(self);
 
   if (new_nominal_max == NULL) {
@@ -420,15 +414,16 @@ EebusError SetConsumptionNominalMaxInternal(CsLpcUseCase* self, const ScaledValu
   }
 
   const ElectricalConnectionCharacteristicDataType* const characteristic
-      = GetElectricalConnectionCharacteristics(self, &ecs);
+      = CsLpGetElectricalConnectionCharacteristics(self, &ecs);
 
   if (characteristic->characteristic_id == NULL) {
     return kEebusErrorNoChange;
   }
 
+  // clang-format off
   ElectricalConnectionCharacteristicDataType new_characteristic = {
-      .electrical_connection_id = &(ElectricalConnectionIdType){0},
-      .parameter_id             = &(ElectricalConnectionParameterIdType){0},
+      .electrical_connection_id = &self->electrical_connection_id,
+      .parameter_id             = &(ElectricalConnectionParameterIdType){0                                                                         },
       .characteristic_id        = characteristic->characteristic_id,
 
       .value = &(ScaledNumberType){
@@ -436,43 +431,21 @@ EebusError SetConsumptionNominalMaxInternal(CsLpcUseCase* self, const ScaledValu
           .scale  = &(int8_t){new_nominal_max->scale},
       },
   };
+  // clang-format on
 
   return ElectricalConnectionServerUpdateCharacteristic(&ecs, &new_characteristic, NULL);
 }
 
-EebusError SetConsumptionNominalMax(CsLpcUseCaseObject* self, const ScaledValue* new_nominal_max) {
+EebusError CsLpSetNominalMax(CsLpUseCaseObject* self, const ScaledValue* new_nominal_max) {
   UseCase* const use_case = USE_CASE(self);
 
   DEVICE_LOCAL_LOCK(use_case->local_device);
-  const EebusError ret = SetConsumptionNominalMaxInternal(CS_LPC_USE_CASE(self), new_nominal_max);
+  const EebusError ret = CsLpSetNominalMaxInternal(CS_LP_USE_CASE(self), new_nominal_max);
   DEVICE_LOCAL_UNLOCK(use_case->local_device);
   return ret;
 }
 
-ElectricalConnectionCharacteristicTypeType GetElectricalConnectionCharacteristicTypeInternal(const CsLpcUseCase* self) {
-  UseCase* const use_case = USE_CASE(self);
-
-  const DeviceTypeType* const device_type = DEVICE_GET_DEVICE_TYPE(DEVICE_OBJECT(use_case->local_device));
-
-  // According to LPC V1.0 2.2, lines 400ff:
-  // - a HEMS provides contractual consumption nominal max
-  // - any other devices provides power consupmtion nominal max
-  ElectricalConnectionCharacteristicTypeType ret
-      = kElectricalConnectionCharacteristicTypeTypePowerConsumptionNominalMax;
-
-  if ((device_type == NULL) || (*device_type == kDeviceTypeTypeEnergyManagementSystem)) {
-    ret = kElectricalConnectionCharacteristicTypeTypeContractualConsumptionNominalMax;
-  }
-
-  return ret;
-}
-
-ElectricalConnectionCharacteristicTypeType GetElectricalConnectionCharacteristicType(const CsLpcUseCaseObject* self) {
-  UseCase* const use_case = USE_CASE(self);
-
-  DEVICE_LOCAL_LOCK(use_case->local_device);
-  const ElectricalConnectionCharacteristicTypeType ret
-      = GetElectricalConnectionCharacteristicTypeInternal(CS_LPC_USE_CASE(self));
-  DEVICE_LOCAL_UNLOCK(use_case->local_device);
-  return ret;
+ElectricalConnectionCharacteristicTypeType CsLpGetElectricalConnectionCharacteristicType(const CsLpUseCaseObject* self
+) {
+  return CS_LP_USE_CASE(self)->nominal_max_characteristic;
 }

@@ -53,7 +53,7 @@ class ShipConnectionTestSuite : public testing::Test {
   ShipConnection sc;
 
  protected:
-  EebusError MessageBufferInitHelper(MessageBuffer* msg_buf, const char* msg, size_t msg_size);
+  EebusError MessageBufferInitHelper(MessageBuffer* msg_buf, const std::string_view& msg);
   void ExpectCloseWithError(const char* error_msg, bool had_error);
   void SetShipConnectionState(SmeState state);
 };

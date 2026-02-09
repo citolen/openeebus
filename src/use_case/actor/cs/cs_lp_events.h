@@ -15,11 +15,11 @@
  */
 /**
  * @file
- * @brief Energy Guard LPC events handling
+ * @brief Controllable System LPC events handling
  */
 
-#ifndef SRC_USE_CASE_ENERGY_GUARD_EVENTS_H_
-#define SRC_USE_CASE_ENERGY_GUARD_EVENTS_H_
+#ifndef SRC_USE_CASE_ACTOR_CS_CS_LP_EVENTS_H_
+#define SRC_USE_CASE_ACTOR_CS_CS_LP_EVENTS_H_
 
 #include "src/spine/events/events.h"
 
@@ -27,10 +27,10 @@
 extern "C" {
 #endif  // __cplusplus
 
-void EgLpcHandleEvent(const EventPayload* payload, void* ctx);
+void CsLpHandleEvent(const EventPayload* payload, void* ctx);
 
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
 
-#endif  // SRC_USE_CASE_ENERGY_GUARD_EVENTS_H_
+#endif  // SRC_USE_CASE_ACTOR_CS_CS_LP_EVENTS_H_

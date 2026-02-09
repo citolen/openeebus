@@ -27,7 +27,7 @@
 
 #include "mocks/common/eebus_timer/eebus_timer_mock.h"
 #include "mocks/ship/ship_connection/data_writer_mock.h"
-#include "mocks/use_case/api/cs_lpc_listener_mock.h"
+#include "mocks/use_case/api/cs_lp_listener_mock.h"
 #include "src/common/array_util.h"
 #include "src/common/eebus_malloc.h"
 #include "src/common/eebus_timer/eebus_timer.h"
@@ -80,9 +80,10 @@ class CsLpcTestFixture : public UseCaseTestFixture {
         kHeartbeatTimeout
     );
 
-    cs_lpc_listener_mock_.reset(CsLpcListenerMockCreate());
-    use_case_.reset(CsLpcUseCaseCreate(entity, 0, CS_LPC_LISTENER_OBJECT(cs_lpc_listener_mock_.get())));
-    SetConsumptionLimit(use_case_.get(), 4200, 0, false, true);
+    cs_lpc_listener_mock_.reset(CsLpListenerMockCreate());
+    use_case_.reset(CsLpcUseCaseCreate(entity, 0, CS_LP_LISTENER_OBJECT(cs_lpc_listener_mock_.get())));
+    const ScaledValue limit = {4200, 0};
+    CsLpcSetActiveConsumptionPowerLimit(use_case_.get(), &limit, false, true);
 
     DEVICE_LOCAL_ADD_ENTITY(device_local_.get(), entity);
   };
@@ -94,12 +95,12 @@ class CsLpcTestFixture : public UseCaseTestFixture {
   };
 
  protected:
-  std::unique_ptr<CsLpcListenerMock, decltype(&CsLpcListenerMockDelete)> cs_lpc_listener_mock_{
+  std::unique_ptr<CsLpListenerMock, decltype(&CsLpListenerMockDelete)> cs_lpc_listener_mock_{
       nullptr,
-      CsLpcListenerMockDelete
+      CsLpListenerMockDelete
   };
 
-  std::unique_ptr<CsLpcUseCaseObject, decltype(&CsLpcUseCaseDelete)> use_case_{nullptr, CsLpcUseCaseDelete};
+  std::unique_ptr<CsLpUseCaseObject, decltype(&CsLpUseCaseDelete)> use_case_{nullptr, CsLpUseCaseDelete};
 };
 
 TEST_F(CsLpcTestFixture, CsLpcTest) {
@@ -179,11 +180,11 @@ TEST_F(CsLpcTestFixture, CsLpcTest) {
 
   // 23. Set the Consumption Nominal Maximum value
   const ScaledValue consumption_nominal_max_set{700, 1};
-  SetConsumptionNominalMax(use_case_.get(), &consumption_nominal_max_set);
+  CsLpcSetConsumptionNominalMax(use_case_.get(), &consumption_nominal_max_set);
 
   ScaledValue consumption_nominal_max_get = {0};
   // 24. Get the Consumption Nominal Maximum value
-  const EebusError err = GetConsumptionNominalMax(use_case_.get(), &consumption_nominal_max_get);
+  const EebusError err = CsLpcGetConsumptionNominalMax(use_case_.get(), &consumption_nominal_max_get);
   EXPECT_EQ(err, kEebusErrorOk);
   EXPECT_EQ(consumption_nominal_max_get.value, 700);
   EXPECT_EQ(consumption_nominal_max_get.scale, 1);

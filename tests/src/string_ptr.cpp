@@ -20,5 +20,5 @@ std::ostream& operator<<(std::ostream& os, const StringPtr& p) {
     return os << nullptr;
   }
 
-  return os << *p._ps << "\"";
+  return os << "\"" << *p._ps << "\"";
 }

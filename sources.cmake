@@ -3,7 +3,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/src/common/eebus_date_time/eebus_date_time_sou
 
 set(SOURCES
   src/cli/eebus_cli.c
-  src/cli/eebus_cli_eg_lpc.c
+  src/cli/eebus_cli_eg_lp.c
   src/cli/eebus_cli_ma_mpc.c
   src/common/debug.c
   src/common/eebus_device_info.c
@@ -80,12 +80,14 @@ set(SOURCES
   src/spine/node_management/node_management_usecase.c
   src/spine/subscription/subscription_manager.c
   src/use_case/actor/common/load_control.c
-  src/use_case/actor/cs/lpc/cs_lpc_events.c
-  src/use_case/actor/cs/lpc/cs_lpc_public.c
   src/use_case/actor/cs/lpc/cs_lpc.c
-  src/use_case/actor/eg/lpc/eg_lpc_events.c
-  src/use_case/actor/eg/lpc/eg_lpc_public.c
+  src/use_case/actor/cs/cs_lp_events.c
+  src/use_case/actor/cs/cs_lp_public.c
+  src/use_case/actor/cs/cs_lp.c
   src/use_case/actor/eg/lpc/eg_lpc.c
+  src/use_case/actor/eg/eg_lp_events.c
+  src/use_case/actor/eg/eg_lp_public.c
+  src/use_case/actor/eg/eg_lp.c
   src/use_case/actor/ma/mpc/ma_mpc.c
   src/use_case/actor/ma/mpc/ma_mpc_events.c
   src/use_case/actor/ma/mpc/ma_mpc_measurement.c
@@ -124,7 +126,7 @@ set(HEADERS
   src/cli/eebus_cli.h
   src/cli/eebus_cli_internal.h
   src/cli/eebus_cli_interface.h
-  src/cli/eebus_cli_eg_lpc.h
+  src/cli/eebus_cli_eg_lp.h
   src/cli/eebus_cli_ma_mpc.h
   src/common/api/eebus_mutex_interface.h
   src/common/api/eebus_queue_interface.h
@@ -328,12 +330,14 @@ set(HEADERS
   src/spine/subscription/subscription_manager.h
   src/use_case/api/ma_mpc_listener_interface.h
   src/use_case/actor/common/load_control.h
-  src/use_case/actor/cs/lpc/cs_lpc_events.h
-  src/use_case/actor/cs/lpc/cs_lpc_internal.h
+  src/use_case/actor/cs/cs_lp_events.h
+  src/use_case/actor/cs/cs_lp_internal.h
+  src/use_case/actor/cs/cs_lp.h
   src/use_case/actor/cs/lpc/cs_lpc.h
-  src/use_case/actor/eg/lpc/eg_lpc_events.h
-  src/use_case/actor/eg/lpc/eg_lpc_internal.h
   src/use_case/actor/eg/lpc/eg_lpc.h
+  src/use_case/actor/eg/eg_lp_events.h
+  src/use_case/actor/eg/eg_lp_internal.h
+  src/use_case/actor/eg/eg_lp.h
   src/use_case/actor/ma/mpc/ma_mpc.h
   src/use_case/actor/ma/mpc/ma_mpc_events.h
   src/use_case/actor/ma/mpc/ma_mpc_internal.h
