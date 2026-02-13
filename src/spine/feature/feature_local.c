@@ -774,7 +774,7 @@ EebusError ProcessWriteFunctionData(FeatureLocal* self, const Message* msg) {
     return err;
   }
 
-  FunctionUpdateNotifySubscribers(self, function, new_data, NULL, NULL);
+  FunctionUpdateNotifySubscribers(self, function, new_data, filter_partial, filter_delete);
 
   PublishDataUpdateEvent(self, msg->feature_remote, function_type, new_data, kCommandClassifierTypeWrite);
   return kEebusErrorOk;

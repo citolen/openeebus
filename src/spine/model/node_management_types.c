@@ -51,8 +51,18 @@ NodeManagementDetailedDiscoveryEntityInformationType* NodeManagementDetailedDisc
     const EntityAddressType* entity_addr,
     EntityTypeType entity_type
 ) {
+  if (entity_addr == NULL) {
+    return NULL;
+  }
+
+  const EntityAddressType entity_addr_tmp = {
+      .device      = NULL,
+      .entity      = entity_addr->entity,
+      .entity_size = entity_addr->entity_size,
+  };
+
   const NetworkManagementEntityDescriptionDataType entity_description_tmp = {
-      .entity_address = entity_addr,
+      .entity_address = &entity_addr_tmp,
       .entity_type    = &entity_type,
   };
 
@@ -70,8 +80,19 @@ NodeManagementDetailedDiscoveryFeatureInformationType* NodeManagementDetailedDis
     RoleType role,
     DescriptionType description
 ) {
+  if (feature_address == NULL) {
+    return NULL;
+  }
+
+  const FeatureAddressType feature_address_tmp = {
+      .device      = NULL,
+      .entity      = feature_address->entity,
+      .entity_size = feature_address->entity_size,
+      .feature     = feature_address->feature,
+  };
+
   const NetworkManagementFeatureDescriptionDataType feature_description = {
-      .feature_address    = feature_address,
+      .feature_address    = &feature_address_tmp,
       .feature_type       = &feature_type,
       .role               = &role,
       .description        = description,
