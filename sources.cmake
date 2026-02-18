@@ -3,8 +3,10 @@ include(${CMAKE_CURRENT_LIST_DIR}/src/common/eebus_date_time/eebus_date_time_sou
 
 set(SOURCES
   src/cli/eebus_cli.c
+  src/cli/eebus_cli_cs_lp.c
   src/cli/eebus_cli_eg_lp.c
   src/cli/eebus_cli_ma_mpc.c
+  src/cli/eebus_cli_mu_mpc.c
   src/common/debug.c
   src/common/eebus_device_info.c
   src/common/eebus_math/eebus_math.c
@@ -15,6 +17,7 @@ set(SOURCES
   src/common/string_util.c
   src/common/uint64_lut.c
   src/common/vector.c
+  src/common/eebus_bool/eebus_bool.c
   src/service/service/eebus_service_config.c
   src/service/service/eebus_service.c
   src/ship/mdns/mdns_entry.c
@@ -124,10 +127,12 @@ list(APPEND SOURCES ${EEBUS_DATA_SOURCES})
 
 set(HEADERS
   src/cli/eebus_cli.h
-  src/cli/eebus_cli_internal.h
-  src/cli/eebus_cli_interface.h
+  src/cli/eebus_cli_cs_lp.h
   src/cli/eebus_cli_eg_lp.h
+  src/cli/eebus_cli_handler_interface.h
+  src/cli/eebus_cli_interface.h
   src/cli/eebus_cli_ma_mpc.h
+  src/cli/eebus_cli_mu_mpc.h
   src/common/api/eebus_mutex_interface.h
   src/common/api/eebus_queue_interface.h
   src/common/api/eebus_timer_interface.h
@@ -141,6 +146,7 @@ set(HEADERS
   src/common/json.h
   src/common/message_buffer.h
   src/common/eebus_arguments.h
+  src/common/eebus_bool/eebus_bool.h
   src/common/eebus_math/eebus_math.h
   src/common/eebus_mutex/eebus_mutex.h
   src/common/eebus_queue/eebus_queue.h

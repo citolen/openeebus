@@ -15,39 +15,33 @@
  */
 /**
  * @file
- * @brief EEBUS CLI private declarations
+ * @brief EEBUS CLI MU MPC commands handling
  */
 
-#ifndef SRC_CLI_EEBUS_CLI_INTERNAL_H_
-#define SRC_CLI_EEBUS_CLI_INTERNAL_H_
+#ifndef SRC_CLI_EEBUS_CLI_MU_MPC_H_
+#define SRC_CLI_EEBUS_CLI_MU_MPC_H_
 
-#include "src/cli/eebus_cli_interface.h"
+#include <stddef.h>
+
+#include "src/cli/eebus_cli_handler_interface.h"
+#include "src/common/eebus_malloc.h"
+#include "src/use_case/actor/mu/mpc/mu_mpc.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-typedef struct EgLpCli EgLpCli;
+EebusCliHandlerObject* MuMpcCliCreate(MuMpcUseCaseObject* mu_mpc);
 
-typedef struct EebusCli EebusCli;
-
-struct EebusCli {
-  /** Implements the EEBUS CLI Interface */
-  EebusCliObject obj;
-
-  /** EG LPC CLI instance to deal with */
-  EgLpCli* eg_lpc_cli;
-
-  /** MA MPC instance to deal with */
-  MaMpcUseCaseObject* ma_mpc;
-  /** MA MPC remote entity address to communicate with */
-  const EntityAddressType* ma_mpc_entity_addr;
-};
-
-#define EEBUS_CLI(obj) ((EebusCli*)(obj))
+static inline void MuMpcCliDelete(EebusCliHandlerObject* mu_mpc_cli) {
+  if (mu_mpc_cli != NULL) {
+    EEBUS_CLI_HANDLER_DESTRUCT(mu_mpc_cli);
+    EEBUS_FREE(mu_mpc_cli);
+  }
+}
 
 #ifdef __cplusplus
-}  // extern "C"
+}
 #endif  // __cplusplus
 
-#endif  // SRC_CLI_EEBUS_CLI_INTERNAL_H_
+#endif  // SRC_CLI_EEBUS_CLI_MU_MPC_H_

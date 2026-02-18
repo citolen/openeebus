@@ -15,30 +15,29 @@
  */
 /**
  * @file
- * @brief EEBUS CLI MA MPC commands handling
+ * @brief EEBUS CLI CS Limitation of Power commands handling
  */
 
-#ifndef SRC_CLI_EEBUS_CLI_MA_MPC_H_
-#define SRC_CLI_EEBUS_CLI_MA_MPC_H_
+#ifndef SRC_CLI_EEBUS_CLI_CS_LP_H_
+#define SRC_CLI_EEBUS_CLI_CS_LP_H_
 
 #include <stddef.h>
 
 #include "src/cli/eebus_cli_handler_interface.h"
 #include "src/common/eebus_malloc.h"
 #include "src/spine/model/common_data_types.h"
-#include "src/spine/model/entity_types.h"
-#include "src/use_case/actor/ma/mpc/ma_mpc.h"
+#include "src/use_case/actor/cs/cs_lp.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-EebusCliHandlerObject* MaMpcCliCreate(MaMpcUseCaseObject* ma_mpc, const EntityAddressType* entity_addr);
+EebusCliHandlerObject* CsLpCliCreate(EnergyDirectionType energy_direction, CsLpUseCaseObject* cs_lp);
 
-static inline void MaMpcCliDelete(EebusCliHandlerObject* ma_mpc_cli) {
-  if (ma_mpc_cli != NULL) {
-    EEBUS_CLI_HANDLER_DESTRUCT(ma_mpc_cli);
-    EEBUS_FREE(ma_mpc_cli);
+static inline void CsLpCliDelete(EebusCliHandlerObject* cs_lp_cli) {
+  if (cs_lp_cli != NULL) {
+    EEBUS_CLI_HANDLER_DESTRUCT(cs_lp_cli);
+    EEBUS_FREE(cs_lp_cli);
   }
 }
 
@@ -46,4 +45,4 @@ static inline void MaMpcCliDelete(EebusCliHandlerObject* ma_mpc_cli) {
 }
 #endif  // __cplusplus
 
-#endif  // SRC_CLI_EEBUS_CLI_MA_MPC_H_
+#endif  // SRC_CLI_EEBUS_CLI_CS_LP_H_

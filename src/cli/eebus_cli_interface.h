@@ -23,6 +23,7 @@
 
 #include "src/common/eebus_malloc.h"
 #include "src/spine/model/entity_types.h"
+#include "src/use_case/actor/cs/cs_lp.h"
 #include "src/use_case/actor/eg/eg_lp.h"
 #include "src/use_case/actor/ma/mpc/ma_mpc.h"
 #include "src/use_case/actor/mu/mpc/mu_mpc.h"
@@ -54,6 +55,12 @@ struct EebusCliInterface {
    */
   void (*destruct)(EebusCliObject* self);
   /**
+   * @brief Set the CS LPC use case instance to be used by the CLI handler
+   * @param self Pointer to the EEBUS CLI handler instance
+   * @param cs_lpc_use_case CS LPC use case instance to be used by the CLI handler
+   */
+  void (*set_cs_lpc)(EebusCliObject* self, CsLpUseCaseObject* cs_lpc_use_case);
+  /**
    * @brief Set the EG LPC use case instance to be used by the CLI handler
    * @param self Pointer to the EEBUS CLI handler instance
    * @param eg_lpc_use_case EG LPC use case instance to be used by the CLI handler
@@ -64,6 +71,12 @@ struct EebusCliInterface {
       EgLpUseCaseObject* eg_lpc_use_case,
       const EntityAddressType* remote_entity_address
   );
+  /**
+   * @brief Set the MU MPC use case instance to be used by the CLI handler
+   * @param self Pointer to the EEBUS CLI handler instance
+   * @param mu_mpc_use_case MU MPC use case instance to be used by the CLI handler
+   */
+  void (*set_mu_mpc)(EebusCliObject* self, MuMpcUseCaseObject* mu_mpc_use_case);
   /**
    * @brief Set the MA MPC use case instance to be used by the CLI handler
    * @param self Pointer to the EEBUS CLI handler instance
@@ -107,10 +120,20 @@ struct EebusCliObject {
 #define EEBUS_CLI_DESTRUCT(obj) (EEBUS_CLI_INTERFACE(obj)->destruct(obj))
 
 /**
- * @brief EEBUS CLI Set Eg Lpc caller definition
+ * @brief EEBUS CLI Set CS LPC caller definition
+ */
+#define EEBUS_CLI_SET_CS_LPC(obj, cs_lpc_use_case) (EEBUS_CLI_INTERFACE(obj)->set_cs_lpc(obj, cs_lpc_use_case))
+
+/**
+ * @brief EEBUS CLI Set EG LPC caller definition
  */
 #define EEBUS_CLI_SET_EG_LPC(obj, eg_lpc_use_case, remote_entity_address) \
   (EEBUS_CLI_INTERFACE(obj)->set_eg_lpc(obj, eg_lpc_use_case, remote_entity_address))
+
+/**
+ * @brief EEBUS CLI Set MU MPC caller definition
+ */
+#define EEBUS_CLI_SET_MU_MPC(obj, mu_mpc_use_case) (EEBUS_CLI_INTERFACE(obj)->set_mu_mpc(obj, mu_mpc_use_case))
 
 /**
  * @brief EEBUS CLI Set Ma Mpc caller definition

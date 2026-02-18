@@ -15,24 +15,87 @@
  */
 /**
  * @file
- * @brief EEBUS CLI MA MPC commands handling
+ * @brief EEBUS CLI MA MPC commands handling implementation
  */
 
 #include <stdio.h>
+#include <string.h>
 
-#include "src/cli/eebus_cli_internal.h"
-#include "src/common/array_util.h"
-#include "src/common/string_util.h"
-#include "src/use_case/model/mpc_types.h"
+#include "src/cli/eebus_cli_ma_mpc.h"
+#include "src/use_case/model/scaled_value.h"
 
-static void EebusCliHandleCmdMaMpcGet(const EebusCli* self, const char* const* tokens, size_t num_tokens);
+typedef struct MaMpcCli MaMpcCli;
+
+struct MaMpcCli {
+  /** Implements the Eebus Cli Handler Interface */
+  EebusCliHandlerObject obj;
+
+  /** MA MPC instance to deal with */
+  MaMpcUseCaseObject* ma_mpc;
+  /** MA MPC remote entity address to communicate with */
+  const EntityAddressType* entity_addr;
+};
+
+#define MA_MPC_CLI(obj) ((MaMpcCli*)(obj))
+
+static void Destruct(EebusCliHandlerObject* self);
+static void HandleCmd(const EebusCliHandlerObject* self, const char* const* tokens, size_t num_tokens);
+
+static const EebusCliHandlerInterface ma_mpc_cli_methods = {
+    .destruct   = Destruct,
+    .handle_cmd = HandleCmd,
+};
+
+static EebusError MaMpcCliConstruct(MaMpcCli* self, MaMpcUseCaseObject* ma_mpc, const EntityAddressType* entity_addr);
+
+static void HandleCmdMaMpcGet(const MaMpcCli* self, const char* const* tokens, size_t num_tokens);
+
+EebusError MaMpcCliConstruct(MaMpcCli* self, MaMpcUseCaseObject* ma_mpc, const EntityAddressType* entity_addr) {
+  // Override "virtual functions table"
+  EEBUS_CLI_HANDLER_INTERFACE(self) = &ma_mpc_cli_methods;
+
+  self->ma_mpc      = ma_mpc;
+  self->entity_addr = NULL;
+
+  if ((ma_mpc == NULL) || (entity_addr == NULL)) {
+    return kEebusErrorInputArgumentNull;
+  }
+
+  self->entity_addr = EntityAddressCopy(entity_addr);
+  if (self->entity_addr == NULL) {
+    return kEebusErrorMemoryAllocate;
+  }
+
+  return kEebusErrorOk;
+}
+
+EebusCliHandlerObject* MaMpcCliCreate(MaMpcUseCaseObject* ma_mpc, const EntityAddressType* entity_addr) {
+  MaMpcCli* ma_mpc_cli = (MaMpcCli*)EEBUS_MALLOC(sizeof(MaMpcCli));
+  if (ma_mpc_cli == NULL) {
+    return NULL;
+  }
+
+  if (MaMpcCliConstruct(ma_mpc_cli, ma_mpc, entity_addr) != kEebusErrorOk) {
+    MaMpcCliDelete(EEBUS_CLI_HANDLER_OBJECT(ma_mpc_cli));
+    return NULL;
+  }
+
+  return EEBUS_CLI_HANDLER_OBJECT(ma_mpc_cli);
+}
+
+void Destruct(EebusCliHandlerObject* self) {
+  MaMpcCli* ma_mpc_cli = MA_MPC_CLI(self);
+
+  EntityAddressDelete((EntityAddressType*)ma_mpc_cli->entity_addr);
+  ma_mpc_cli->entity_addr = NULL;
+}
 
 //-------------------------------------------------------------------------------------------//
 //
 // MA MPC Getters Handling
 //
 //-------------------------------------------------------------------------------------------//
-void EebusCliHandleCmdMaMpcGet(const EebusCli* self, const char* const* tokens, size_t num_tokens) {
+void HandleCmdMaMpcGet(const MaMpcCli* self, const char* const* tokens, size_t num_tokens) {
   if (num_tokens != 3) {
     printf("Insufficient arguments for ma_mpc get command\n");
     return;
@@ -40,42 +103,32 @@ void EebusCliHandleCmdMaMpcGet(const EebusCli* self, const char* const* tokens, 
 
   const char* const name = tokens[2];
 
-  const MuMpcMeasurementNameId* name_id = MuMpcMeasurementGetNameId(name);
-
+  const MuMpcMeasurementNameId* const name_id = MuMpcMeasurementGetNameId(name);
   if (name_id == NULL) {
     printf("Unknown measurement name for ma_mpc get: %s\n", name);
     return;
   }
 
   ScaledValue value = {0};
-  if (MaMpcGetMeasurementData(self->ma_mpc, *name_id, self->ma_mpc_entity_addr, &value) != kEebusErrorOk) {
-    printf("Getting measurement value failed\n");
+  if (MaMpcGetMeasurementData(self->ma_mpc, *name_id, self->entity_addr, &value) != kEebusErrorOk) {
+    printf("Getting MA MPC measurement value failed\n");
     return;
   }
 
-  const char* const value_str = ScaledValueToString(&value);
-  if (value_str == NULL) {
-    printf("Converting measurement to string failed\n");
-    return;
-  }
-
-  printf("Measurement %s: value=%s\n", name, value_str);
-  StringDelete((char*)value_str);
+  printf("MA MPC measurement %s: ", name);
+  ScaledValuePrint("value=%s\n", &value);
 }
 
-void EebusCliHandleCmdMaMpc(const EebusCli* self, const char* const* tokens, size_t num_tokens) {
+void HandleCmd(const EebusCliHandlerObject* self, const char* const* tokens, size_t num_tokens) {
+  const MaMpcCli* const ma_mpc_cli = MA_MPC_CLI(self);
+
   if (num_tokens < 2) {
     printf("Insufficient arguments for ma_mpc command\n");
     return;
   }
 
-  if (self->ma_mpc == NULL) {
-    printf("MA MPC Use Case not set in CLI handler\n");
-    return;
-  }
-
   if (strcmp(tokens[1], "get") == 0) {
-    EebusCliHandleCmdMaMpcGet(self, tokens, num_tokens);
+    HandleCmdMaMpcGet(ma_mpc_cli, tokens, num_tokens);
   } else {
     printf("Unknown subcommand for ma_mpc: %s\n", tokens[1]);
   }

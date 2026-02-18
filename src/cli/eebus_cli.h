@@ -29,32 +29,56 @@
  * @endcode
  *
  * Commands examples
+ * CS LPC:
+ * cs_lpc set power_limit 3500.5 false true
+ * cs_lpc get power_limit
+ * cs_lpc set failsafe_limit 3500.5 true
+ * cs_lpc get failsafe_limit
+ * cs_lpc set failsafe_duration PT3H02M3S true
+ * cs_lpc get failsafe_duration
+ * cs_lpc start heartbeat
+ * cs_lpc stop heartbeat
+ *
  * EG LPC:
  * eg_lpc set power_limit 3500.5 PT12H true
  * eg_lpc get power_limit
  * eg_lpc set failsafe_limit 3500.5
  * eg_lpc get failsafe_limit
  * eg_lpc set failsafe_duration PT3H02M3S
+ * eg_lpc get failsafe_duration
  * eg_lpc start heartbeat
  * eg_lpc stop heartbeat
  *
+ * MU MPC:
+ * // MU MPC commands format:
+ * // mu_mpc get <measurement_name>
+ * // mu_mpc set <measurement_name> <value>
+ * // The list of available measurement names:
+ * // power_total
+ * // power_phase_a
+ * // power_phase_b
+ * // power_phase_c
+ * // energy_consumed
+ * // energy_produced
+ * // current_phase_a
+ * // current_phase_b
+ * // current_phase_c
+ * // voltage_phase_a
+ * // voltage_phase_b
+ * // voltage_phase_c
+ * // voltage_phase_ab
+ * // voltage_phase_bc
+ * // voltage_phase_ac
+ * // frequency
+ * // For power_total use e.g.:
+ * mu_mpc get power_total
+ * mu_mpc set power_total 1200.0
+ *
  * MA MPC:
+ * // MA MPC commands format:
+ * // ma_mpc get <measurement_name>
+ * // For power_total use e.g.:
  * ma_mpc get power_total
- * ma_mpc get power_phase_a
- * ma_mpc get power_phase_b
- * ma_mpc get power_phase_c
- * ma_mpc get energy_consumed
- * ma_mpc get energy_produced
- * ma_mpc get current_phasea
- * ma_mpc get current_phaseb
- * ma_mpc get current_phasec
- * ma_mpc get voltage_phase_a
- * ma_mpc get voltage_phase_b
- * ma_mpc get voltage_phase_c
- * ma_mpc get voltage_phase_ab
- * ma_mpc get voltage_phase_bc
- * ma_mpc get voltage_phase_ac
- * ma_mpc get frequency
  */
 
 #ifndef SRC_CLI_EEBUS_CLI_H_

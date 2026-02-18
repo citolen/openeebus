@@ -15,29 +15,36 @@
  */
 /**
  * @file
- * @brief EEBUS CLI EG LPC commands handling
+ * @brief EEBUS CLI EG Limitation of Power commands handling
  */
 
-#ifndef SRC_CLI_EEBUS_CLI_EG_LPC_H_
-#define SRC_CLI_EEBUS_CLI_EG_LPC_H_
+#ifndef SRC_CLI_EEBUS_CLI_EG_LP_H_
+#define SRC_CLI_EEBUS_CLI_EG_LP_H_
 
-#include "src/cli/eebus_cli_internal.h"
+#include <stddef.h>
+
+#include "src/cli/eebus_cli_handler_interface.h"
+#include "src/common/eebus_malloc.h"
+#include "src/spine/model/common_data_types.h"
+#include "src/spine/model/entity_types.h"
+#include "src/use_case/actor/eg/eg_lp.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-typedef struct EgLpCli EgLpCli;
-
-EgLpCli*
+EebusCliHandlerObject*
 EgLpCliCreate(EnergyDirectionType energy_direction, EgLpUseCaseObject* eg_lp, const EntityAddressType* entity_addr);
 
-void EgLpCliDelete(EgLpCli* eebus_cli_eg_lp);
-
-void EgLpCliHandleCmdEgLp(const EgLpCli* self, const char* const* tokens, size_t num_tokens);
+static inline void EgLpCliDelete(EebusCliHandlerObject* eg_lp_cli) {
+  if (eg_lp_cli != NULL) {
+    EEBUS_CLI_HANDLER_DESTRUCT(eg_lp_cli);
+    EEBUS_FREE(eg_lp_cli);
+  }
+}
 
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
 
-#endif  // SRC_CLI_EEBUS_CLI_EG_LPC_H_
+#endif  // SRC_CLI_EEBUS_CLI_EG_LP_H_

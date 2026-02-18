@@ -21,39 +21,61 @@
 #include <stdio.h>
 
 #include "src/cli/eebus_cli.h"
+#include "src/cli/eebus_cli_cs_lp.h"
 #include "src/cli/eebus_cli_eg_lp.h"
-#include "src/cli/eebus_cli_internal.h"
 #include "src/cli/eebus_cli_ma_mpc.h"
+#include "src/cli/eebus_cli_mu_mpc.h"
 #include "src/common/array_util.h"
 #include "src/common/eebus_errors.h"
 #include "src/common/eebus_malloc.h"
 #include "src/common/string_util.h"
 
+typedef struct EebusCli EebusCli;
+
+struct EebusCli {
+  /** Implements the EEBUS CLI Interface */
+  EebusCliObject obj;
+
+  /** CS LPC CLI instance to deal with */
+  EebusCliHandlerObject* cs_lpc_cli;
+  /** EG LPC CLI instance to deal with */
+  EebusCliHandlerObject* eg_lpc_cli;
+  /** MA MPC CLI instance to deal with */
+  EebusCliHandlerObject* ma_mpc_cli;
+  /** MU MPC CLI instance to deal with */
+  EebusCliHandlerObject* mu_mpc_cli;
+};
+
+#define EEBUS_CLI(obj) ((EebusCli*)(obj))
+
 static void Destruct(EebusCliObject* self);
+static void SetCsLpc(EebusCliObject* self, CsLpUseCaseObject* cs_lpc_use_case);
 static void
 SetEgLpc(EebusCliObject* self, EgLpUseCaseObject* eg_lpc_use_case, const EntityAddressType* remote_entity_address);
+static void SetMuMpc(EebusCliObject* self, MuMpcUseCaseObject* mu_mpc_use_case);
 static void
 SetMaMpc(EebusCliObject* self, MaMpcUseCaseObject* ma_mpc_use_case, const EntityAddressType* remote_entity_address);
 static void HandleCmd(const EebusCliObject* self, char* cmd);
 
 static const EebusCliInterface eebus_cli_methods = {
     .destruct   = Destruct,
+    .set_cs_lpc = SetCsLpc,
     .set_eg_lpc = SetEgLpc,
+    .set_mu_mpc = SetMuMpc,
     .set_ma_mpc = SetMaMpc,
     .handle_cmd = HandleCmd,
 };
 
 static EebusError EebusCliConstruct(EebusCli* self);
-static void EebusCliHandleCmdEgLpc(const EebusCli* self, const char* const* tokens, size_t num_tokens);
 
 EebusError EebusCliConstruct(EebusCli* self) {
   // Override "virtual functions table"
   EEBUS_CLI_INTERFACE(self) = &eebus_cli_methods;
 
+  self->cs_lpc_cli = NULL;
   self->eg_lpc_cli = NULL;
-
-  self->ma_mpc             = NULL;
-  self->ma_mpc_entity_addr = NULL;
+  self->mu_mpc_cli = NULL;
+  self->ma_mpc_cli = NULL;
 
   return kEebusErrorOk;
 }
@@ -75,11 +97,25 @@ EebusCliObject* EebusCliCreate(void) {
 void Destruct(EebusCliObject* self) {
   EebusCli* const eebus_cli = EEBUS_CLI(self);
 
-  EntityAddressDelete((EntityAddressType*)eebus_cli->ma_mpc_entity_addr);
-  eebus_cli->ma_mpc_entity_addr = NULL;
+  MaMpcCliDelete(eebus_cli->ma_mpc_cli);
+  eebus_cli->ma_mpc_cli = NULL;
+
+  MuMpcCliDelete(eebus_cli->mu_mpc_cli);
+  eebus_cli->mu_mpc_cli = NULL;
 
   EgLpCliDelete(eebus_cli->eg_lpc_cli);
   eebus_cli->eg_lpc_cli = NULL;
+
+  CsLpCliDelete(eebus_cli->cs_lpc_cli);
+  eebus_cli->cs_lpc_cli = NULL;
+}
+
+void SetCsLpc(EebusCliObject* self, CsLpUseCaseObject* cs_lpc_use_case) {
+  EebusCli* const eebus_cli = EEBUS_CLI(self);
+
+  // Release the previously created CLI instance and create a new one
+  CsLpCliDelete(eebus_cli->cs_lpc_cli);
+  eebus_cli->cs_lpc_cli = CsLpCliCreate(kEnergyDirectionTypeConsume, cs_lpc_use_case);
 }
 
 void SetEgLpc(
@@ -90,15 +126,21 @@ void SetEgLpc(
   EebusCli* const eebus_cli = EEBUS_CLI(self);
 
   // Release the previously created CLI instance
-  if (eebus_cli->eg_lpc_cli != NULL) {
-    EgLpCliDelete(eebus_cli->eg_lpc_cli);
-    eebus_cli->eg_lpc_cli = NULL;
-  }
+  EgLpCliDelete(eebus_cli->eg_lpc_cli);
+  eebus_cli->eg_lpc_cli = NULL;
 
-  // Copy the new entity address if not NULL
+  // Create a new CLI instance if remote entity address is not NULL
   if (remote_entity_address != NULL) {
     eebus_cli->eg_lpc_cli = EgLpCliCreate(kEnergyDirectionTypeConsume, eg_lpc_use_case, remote_entity_address);
   }
+}
+
+static void SetMuMpc(EebusCliObject* self, MuMpcUseCaseObject* mu_mpc_use_case) {
+  EebusCli* const eebus_cli = EEBUS_CLI(self);
+
+  // Release the previously created CLI instance and create a new one
+  MuMpcCliDelete(eebus_cli->mu_mpc_cli);
+  eebus_cli->mu_mpc_cli = MuMpcCliCreate(mu_mpc_use_case);
 }
 
 void SetMaMpc(
@@ -108,64 +150,56 @@ void SetMaMpc(
 ) {
   EebusCli* const eebus_cli = EEBUS_CLI(self);
 
-  eebus_cli->ma_mpc = ma_mpc_use_case;
+  // Release the previously created CLI instance
+  MaMpcCliDelete(eebus_cli->ma_mpc_cli);
+  eebus_cli->ma_mpc_cli = NULL;
 
-  // Release the old entity adress
-  if (eebus_cli->ma_mpc_entity_addr != NULL) {
-    EntityAddressDelete((EntityAddressType*)eebus_cli->ma_mpc_entity_addr);
-    eebus_cli->ma_mpc_entity_addr = NULL;
-  }
-
-  // Copy the new entity address if not NULL
+  // Create a new CLI instance if remote entity address is not NULL
   if (remote_entity_address != NULL) {
-    eebus_cli->ma_mpc_entity_addr = EntityAddressCopy(remote_entity_address);
+    eebus_cli->ma_mpc_cli = MaMpcCliCreate(ma_mpc_use_case, remote_entity_address);
   }
-}
-
-void EebusCliHandleCmdEgLpc(const EebusCli* self, const char* const* tokens, size_t num_tokens) {
-  if (self->eg_lpc_cli == NULL) {
-    printf("EG LPC Use Case not set in CLI handler\n");
-    return;
-  }
-
-  EgLpCliHandleCmdEgLp(self->eg_lpc_cli, tokens, num_tokens);
 }
 
 void HandleCmd(const EebusCliObject* self, char* cmd) {
   const EebusCli* const eebus_cli = EEBUS_CLI(self);
 
-  const char* tokens[10] = {0};
-  size_t num_tokens      = 0;
-
   static const char delimiters[] = " \t\n";
 
-  char* p = NULL;
+  const char* tokens[10] = {NULL};
+  size_t num_tokens      = 0;
+  char* p                = NULL;
 
-  tokens[num_tokens++] = StringToken(cmd, delimiters, &p);
-  if (tokens[0] == NULL) {
-    return;
-  }
-
-  while (num_tokens < ARRAY_SIZE(tokens)) {
-    char* const token = StringToken(NULL, delimiters, &p);
-    if (token == NULL) {
-      break;
-    }
-
+  for (char* token = StringToken(cmd, delimiters, &p); token != NULL; token = StringToken(NULL, delimiters, &p)) {
     if (num_tokens >= ARRAY_SIZE(tokens)) {
       printf("Too many arguments specified!\n");
-      break;
+      return;
     }
 
     tokens[num_tokens++] = token;
   }
 
-  if (strcmp(tokens[0], "eg_lpc") == 0) {
-    EebusCliHandleCmdEgLpc(eebus_cli, tokens, num_tokens);
+  if (tokens[0] == NULL) {
+    return;
+  }
+
+  const EebusCliHandlerObject* handler = NULL;
+  if (strcmp(tokens[0], "cs_lpc") == 0) {
+    handler = eebus_cli->cs_lpc_cli;
+  } else if (strcmp(tokens[0], "eg_lpc") == 0) {
+    handler = eebus_cli->eg_lpc_cli;
+  } else if (strcmp(tokens[0], "mu_mpc") == 0) {
+    handler = eebus_cli->mu_mpc_cli;
   } else if (strcmp(tokens[0], "ma_mpc") == 0) {
-    EebusCliHandleCmdMaMpc(eebus_cli, tokens, num_tokens);
+    handler = eebus_cli->ma_mpc_cli;
   } else {
     printf("Unknown command: %s\n", tokens[0]);
     return;
   }
+
+  if (handler == NULL) {
+    printf("%s use case not set in CLI handler\n", tokens[0]);
+    return;
+  }
+
+  EEBUS_CLI_HANDLER_HANDLE_CMD(handler, tokens, num_tokens);
 }

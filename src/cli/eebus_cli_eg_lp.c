@@ -15,18 +15,23 @@
  */
 /**
  * @file
- * @brief EEBUS CLI EG LP commands handling implementation
+ * @brief EEBUS CLI EG Limitation of Power commands handling implementation
  */
 
-#include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "src/cli/eebus_cli_eg_lp.h"
-#include "src/cli/eebus_cli_internal.h"
-#include "src/common/string_util.h"
+#include "src/common/eebus_bool/eebus_bool.h"
+#include "src/common/eebus_date_time/eebus_date_time.h"
 #include "src/use_case/model/scaled_value.h"
 
+typedef struct EgLpCli EgLpCli;
+
 struct EgLpCli {
+  /** Implements the Eebus Cli Handler Interface */
+  EebusCliHandlerObject obj;
+
   /** EG LP instance to deal with */
   EgLpUseCaseObject* eg_lp;
   /** EG LP remote entity address to communicate with */
@@ -37,13 +42,22 @@ struct EgLpCli {
   const char* cmd_name_caps;
 };
 
+#define EG_LP_CLI(obj) ((EgLpCli*)(obj))
+
+static void Destruct(EebusCliHandlerObject* self);
+static void HandleCmd(const EebusCliHandlerObject* self, const char* const* tokens, size_t num_tokens);
+
+static const EebusCliHandlerInterface eg_lp_cli_methods = {
+    .destruct   = Destruct,
+    .handle_cmd = HandleCmd,
+};
+
 static EebusError EgLpCliConstruct(
     EgLpCli* self,
     EnergyDirectionType energy_direction,
     EgLpUseCaseObject* eg_lp,
     const EntityAddressType* entity_addr
 );
-static void EgLpCliDestruct(EgLpCli* self);
 
 static void HandleCmdGetPowerLimit(const EgLpCli* self, const char* const* tokens, size_t num_tokens);
 static void HandleCmdGetFailsafeLimit(const EgLpCli* self, const char* const* tokens, size_t num_tokens);
@@ -62,6 +76,9 @@ EebusError EgLpCliConstruct(
     EgLpUseCaseObject* eg_lp,
     const EntityAddressType* entity_addr
 ) {
+  // Override "virtual functions table"
+  EEBUS_CLI_HANDLER_INTERFACE(self) = &eg_lp_cli_methods;
+
   self->eg_lp         = eg_lp;
   self->entity_addr   = NULL;
   self->cmd_name      = NULL;
@@ -87,7 +104,7 @@ EebusError EgLpCliConstruct(
   return kEebusErrorOk;
 }
 
-EgLpCli*
+EebusCliHandlerObject*
 EgLpCliCreate(EnergyDirectionType energy_direction, EgLpUseCaseObject* eg_lp, const EntityAddressType* entity_addr) {
   EgLpCli* cli_eg_lp = (EgLpCli*)EEBUS_MALLOC(sizeof(EgLpCli));
   if (cli_eg_lp == NULL) {
@@ -95,23 +112,18 @@ EgLpCliCreate(EnergyDirectionType energy_direction, EgLpUseCaseObject* eg_lp, co
   }
 
   if (EgLpCliConstruct(cli_eg_lp, energy_direction, eg_lp, entity_addr) != kEebusErrorOk) {
-    EgLpCliDelete(cli_eg_lp);
+    EgLpCliDelete(EEBUS_CLI_HANDLER_OBJECT(cli_eg_lp));
     return NULL;
   }
 
-  return cli_eg_lp;
+  return EEBUS_CLI_HANDLER_OBJECT(cli_eg_lp);
 }
 
-void EgLpCliDestruct(EgLpCli* self) {
-  EntityAddressDelete((EntityAddressType*)self->entity_addr);
-  self->entity_addr = NULL;
-}
+void Destruct(EebusCliHandlerObject* self) {
+  EgLpCli* const eg_lp_cli = EG_LP_CLI(self);
 
-void EgLpCliDelete(EgLpCli* eebus_cli_eg_lp) {
-  if (eebus_cli_eg_lp != NULL) {
-    EgLpCliDestruct(eebus_cli_eg_lp);
-    EEBUS_FREE(eebus_cli_eg_lp);
-  }
+  EntityAddressDelete((EntityAddressType*)eg_lp_cli->entity_addr);
+  eg_lp_cli->entity_addr = NULL;
 }
 
 //-------------------------------------------------------------------------------------------//
@@ -122,58 +134,35 @@ void EgLpCliDelete(EgLpCli* eebus_cli_eg_lp) {
 void HandleCmdGetPowerLimit(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
   LoadLimit limit = {0};
   if (EgLpGetActivePowerLimit(self->eg_lp, self->entity_addr, &limit) != kEebusErrorOk) {
-    printf("Getting power limit failed\n");
+    printf("%s getting power limit failed\n", self->cmd_name_caps);
     return;
   }
 
-  const char* const value_str = ScaledValueToString(&limit.value);
-  if (value_str == NULL) {
-    printf("Converting power limit to string failed\n");
-    return;
-  }
-
-  printf(
-      "Power Limit: value=%s, duration=%" PRId32 "h, active=%s\n",
-      value_str,
-      limit.duration.hours,
-      limit.is_active ? "true" : "false"
-  );
-
-  StringDelete((char*)value_str);
+  printf("%s ", self->cmd_name_caps);
+  ScaledValuePrint("Active Power Limit: value=%s, ", &limit.value);
+  EebusDurationPrint("duration=%s, ", &limit.duration);
+  printf("active=%s\n", EebusBoolToString(limit.is_active));
 }
 
 void HandleCmdGetFailsafeLimit(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
   ScaledValue power_limit = {0};
-
   if (EgLpGetFailsafeActivePowerLimit(self->eg_lp, self->entity_addr, &power_limit) != kEebusErrorOk) {
-    printf("Getting failsafe limit failed\n");
+    printf("%s getting failsafe limit failed\n", self->cmd_name_caps);
     return;
   }
 
-  const char* const value_str = ScaledValueToString(&power_limit);
-  if (value_str == NULL) {
-    printf("Converting failsafe limit to string failed\n");
-    return;
-  }
-
-  printf("Failsafe Active Power Limit: value=%s\n", value_str);
-
-  StringDelete((char*)value_str);
+  printf("%s ", self->cmd_name_caps);
+  ScaledValuePrint("Failsafe Active Power Limit: value=%s\n", &power_limit);
 }
 
 void HandleCmdGetFailsafeDuration(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
   DurationType duration = {0};
-
-  if (num_tokens != 3) {
-    printf("Insufficient arguments for %s get failsafe_duration command\n", self->cmd_name);
-    return;
-  }
-
   if (EgLpGetFailsafeDurationMinimum(self->eg_lp, self->entity_addr, &duration) != kEebusErrorOk) {
-    printf("Getting failsafe duration failed\n");
+    printf("%s getting failsafe duration failed\n", self->cmd_name_caps);
     return;
   }
 
+  printf("%s ", self->cmd_name_caps);
   EebusDurationPrint("Failsafe Duration Minimum: %s\n", &duration);
 }
 
@@ -201,55 +190,54 @@ void HandleCmdGet(const EgLpCli* self, const char* const* tokens, size_t num_tok
 //
 //-------------------------------------------------------------------------------------------//
 void HandleCmdSetPowerLimit(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
-  // Example:
   if (num_tokens != 6) {
     printf("Insufficient arguments for %s set power_limit command\n", self->cmd_name);
     return;
   }
 
   LoadLimit limit = {0};
-
   if (ScaledValueParse(tokens[3], &limit.value) != kEebusErrorOk) {
-    printf("Invalid limit value: %s\n", tokens[3]);
+    printf("%s invalid Active Power Limit value: %s\n", self->cmd_name_caps, tokens[3]);
     return;
   }
 
   if (EebusDurationParse(tokens[4], &limit.duration) != kEebusErrorOk) {
-    printf("Invalid duration value: %s\n", tokens[4]);
+    printf("%s invalid Active Power Limit duration value: %s\n", self->cmd_name_caps, tokens[4]);
     return;
   }
 
-  if (strcmp(tokens[5], "true") == 0) {
-    limit.is_active = true;
-  } else if (strcmp(tokens[5], "false") == 0) {
-    limit.is_active = false;
-  } else {
-    printf("Invalid active flag value: %s\n", tokens[5]);
+  if (EebusBoolParse(tokens[5], &limit.is_active) != kEebusErrorOk) {
+    printf("%s invalid is_active flag value: %s\n", self->cmd_name_caps, tokens[5]);
     return;
   }
 
   if (EgLpSetActivePowerLimit(self->eg_lp, self->entity_addr, &limit) != kEebusErrorOk) {
-    printf("Setting power limit failed\n");
+    printf("%s setting Active Power Limit failed\n", self->cmd_name_caps);
+    return;
   }
+
+  printf("%s setting Active Power Limit succeeded\n", self->cmd_name_caps);
 }
 
 void HandleCmdSetFailsafeLimit(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
-  ScaledValue power_limit = {0};
-
   if (num_tokens != 4) {
     printf("Insufficient arguments for %s set failsafe_limit command\n", self->cmd_name);
     return;
   }
 
+  ScaledValue power_limit = {0};
   if (ScaledValueParse(tokens[3], &power_limit) != kEebusErrorOk) {
-    printf("Invalid value for failsafe_limit: %s\n", tokens[3]);
+    printf("%s invalid value for Failsafe Active Power Limit: %s\n", self->cmd_name_caps, tokens[3]);
     return;
   }
 
   const EntityAddressType* entity_addr = self->entity_addr;
   if (EgLpSetFailsafeActivePowerLimit(self->eg_lp, entity_addr, &power_limit) != kEebusErrorOk) {
-    printf("Setting failsafe limit failed\n");
+    printf("%s setting Failsafe Active Power Limit failed\n", self->cmd_name_caps);
+    return;
   }
+
+  printf("%s setting Failsafe Active Power Limit succeeded\n", self->cmd_name_caps);
 }
 
 void HandleCmdSetFailsafeDuration(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
@@ -260,13 +248,16 @@ void HandleCmdSetFailsafeDuration(const EgLpCli* self, const char* const* tokens
 
   DurationType duration = {0};
   if (EebusDurationParse(tokens[3], &duration) != kEebusErrorOk) {
-    printf("Invalid value for failsafe_duration: %s\n", tokens[3]);
+    printf("%s invalid value for Failsafe Duration: %s\n", self->cmd_name_caps, tokens[3]);
     return;
   }
 
   if (EgLpSetFailsafeDurationMinimum(self->eg_lp, self->entity_addr, &duration) != kEebusErrorOk) {
-    printf("Setting failsafe duration failed\n");
+    printf("%s setting Failsafe Duration failed\n", self->cmd_name_caps);
+    return;
   }
+
+  printf("%s setting Failsafe Duration succeeded\n", self->cmd_name_caps);
 }
 
 void HandleCmdSet(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
@@ -299,10 +290,9 @@ void HandleCmdStart(const EgLpCli* self, const char* const* tokens, size_t num_t
   }
 
   const char* const subcommand = tokens[2];
-
   if (strcmp(subcommand, "heartbeat") == 0) {
     EgLpStartHeartbeat(self->eg_lp);
-    printf("%s Heartbeat started\n", self->cmd_name_caps);
+    printf("%s heartbeat started\n", self->cmd_name_caps);
   } else {
     printf("Unknown subcommand for %s start: %s\n", self->cmd_name, subcommand);
   }
@@ -315,30 +305,31 @@ void HandleCmdStop(const EgLpCli* self, const char* const* tokens, size_t num_to
   }
 
   const char* const subcommand = tokens[2];
-
   if (strcmp(subcommand, "heartbeat") == 0) {
     EgLpStopHeartbeat(self->eg_lp);
-    printf("%s Heartbeat stopped\n", self->cmd_name_caps);
+    printf("%s heartbeat stopped\n", self->cmd_name_caps);
   } else {
     printf("Unknown subcommand for %s stop: %s\n", self->cmd_name, subcommand);
   }
 }
 
-void EgLpCliHandleCmdEgLp(const EgLpCli* self, const char* const* tokens, size_t num_tokens) {
+void HandleCmd(const EebusCliHandlerObject* self, const char* const* tokens, size_t num_tokens) {
+  const EgLpCli* const eg_lp_cli = EG_LP_CLI(self);
+
   if (num_tokens < 2) {
-    printf("Insufficient arguments for %s command\n", self->cmd_name);
+    printf("Insufficient arguments for %s command\n", eg_lp_cli->cmd_name);
     return;
   }
 
   if (strcmp(tokens[1], "set") == 0) {
-    HandleCmdSet(self, tokens, num_tokens);
+    HandleCmdSet(eg_lp_cli, tokens, num_tokens);
   } else if (strcmp(tokens[1], "get") == 0) {
-    HandleCmdGet(self, tokens, num_tokens);
+    HandleCmdGet(eg_lp_cli, tokens, num_tokens);
   } else if (strcmp(tokens[1], "start") == 0) {
-    HandleCmdStart(self, tokens, num_tokens);
+    HandleCmdStart(eg_lp_cli, tokens, num_tokens);
   } else if (strcmp(tokens[1], "stop") == 0) {
-    HandleCmdStop(self, tokens, num_tokens);
+    HandleCmdStop(eg_lp_cli, tokens, num_tokens);
   } else {
-    printf("Unknown subcommand for %s: %s\n", self->cmd_name, tokens[1]);
+    printf("Unknown subcommand for %s: %s\n", eg_lp_cli->cmd_name, tokens[1]);
   }
 }

@@ -121,6 +121,7 @@ EebusError AddLpc(Hpsrv* self, DeviceLocalObject* device_local, EntityLocalObjec
     return kEebusErrorInit;
   }
 
+  EEBUS_CLI_SET_CS_LPC(self->cli, self->cs_lpc);
   return kEebusErrorOk;
 }
 
@@ -177,6 +178,7 @@ EebusError AddMpc(Hpsrv* self, DeviceLocalObject* device_local, EntityLocalObjec
     return err;
   }
 
+  EEBUS_CLI_SET_MU_MPC(self->cli, self->mu_mpc);
   return kEebusErrorOk;
 }
 
