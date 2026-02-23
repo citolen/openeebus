@@ -262,6 +262,7 @@ void ShipNodeOnMdnsEntriesFoundCallback(Vector* found_entries, void* ctx) {
   EEBUS_MUTEX_LOCK(sn->mutex);
   VectorFreeElements(sn->mdns_entries);
   VectorMove(sn->mdns_entries, found_entries);
+  EEBUS_FREE(found_entries);
   EEBUS_MUTEX_UNLOCK(sn->mutex);
 
   sn->search_for_remote_ski = true;

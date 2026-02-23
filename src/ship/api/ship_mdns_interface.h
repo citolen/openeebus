@@ -41,6 +41,7 @@ typedef enum MdnsBrowseInterval MdnsBrowseInterval;
  * @brief On MDNS entries found callback
  *
  * Callback is used instead of MdnsSearchInterface
+ * @note The user of the callback is responsible for freeing found_entries vector and its elements
  */
 typedef void (*OnMdnsEntriesFoundCallback)(Vector* found_entries, void* context);
 
