@@ -25,6 +25,7 @@
 #include "src/use_case/specialization/device_diagnosis/device_diagnosis_client.h"
 #include "src/use_case/specialization/load_control/load_control_server.h"
 
+static void OnUseCaseDataUpdate(CsLpUseCase* self, const EventPayload* payload);
 static void OnLoadControlLimitDataUpdate(CsLpUseCase* self, const EventPayload* payload);
 static void OnConfigurationDataUpdate(const CsLpUseCase* self, const EventPayload* payload);
 static void OnHeartbeat(const CsLpUseCase* self, const EventPayload* payload);
@@ -50,7 +51,7 @@ void AddDeviceDiagnosisClient(CsLpUseCase* self, EntityRemoteObject* remote_enti
   }
 }
 
-void OnDeviceConnected(CsLpUseCase* self, const EventPayload* payload) {
+void OnUseCaseDataUpdate(CsLpUseCase* self, const EventPayload* payload) {
   if (payload->device == NULL) {
     return;
   }
@@ -234,8 +235,9 @@ void OnDataChange(CsLpUseCase* self, const EventPayload* payload) {
 void CsLpHandleEvent(const EventPayload* payload, void* ctx) {
   CsLpUseCase* cs_lpc_use_case = (CsLpUseCase*)ctx;
 
-  if ((payload->event_type == kEventTypeDeviceChange) && (payload->change_type == kElementChangeAdd)) {
-    OnDeviceConnected(cs_lpc_use_case, payload);
+  if ((payload->event_type == kEventTypeDeviceChange) && (payload->change_type == kElementChangeUpdate)
+      && (payload->function_type == kFunctionTypeNodeManagementUseCaseData)) {
+    OnUseCaseDataUpdate(cs_lpc_use_case, payload);
     return;
   }
 

@@ -58,6 +58,15 @@ MATCHER_P3(IsUseCaseEventPayload, actor, use_case_name_id, change_type, "") {
   return (use_case_filter->actor == actor) && (use_case_filter->use_case_name_id == use_case_name_id);
 }
 
+MATCHER(IsDeviceUpdatePayload, "check device update payload type") {
+  bool match = true;
+
+  match = match && (arg->event_type == kEventTypeDeviceChange);
+  match = match && (arg->change_type == kElementChangeUpdate);
+  match = match && (arg->function_type == kFunctionTypeNodeManagementUseCaseData);
+  return match;
+}
+
 //-------------------------------------------------------------------------------------------//
 //
 // NodeManagementRemoteUpdateData() test
@@ -150,6 +159,8 @@ TEST_P(NodeManagementRemoteUpdateDataTests, NodeManagementRemoteUpdateDataTests)
   ASSERT_EQ(SetUseCaseData(GetParam().data_txt), kEebusErrorOk) << "Wrong Use Case Data input!";
 
   EventHandlerMockInst event_handler_mock_inst;
+
+  EXPECT_CALL(*event_handler_mock_inst, Handle(IsDeviceUpdatePayload(), _));
 
   // Expect events for added/removed use cases
   for (const UseCaseFilterType& use_case : GetParam().use_cases_added) {

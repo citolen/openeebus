@@ -214,13 +214,28 @@ EebusError UpdateData(
     return err;
   }
 
-  if (function_type == kFunctionTypeNodeManagementUseCaseData) {
-    const UseCaseInformationListDataType* const use_case_data_new = (const UseCaseInformationListDataType*)
-        FeatureRemoteGetData(FEATURE_REMOTE_OBJECT(self), kFunctionTypeNodeManagementUseCaseData);
-    return UpdateUseCaseData(nmr, use_case_data_new);
+  if (function_type != kFunctionTypeNodeManagementUseCaseData) {
+    return kEebusErrorOk;
   }
 
-  return kEebusErrorOk;
+  // Publish event for remote device being updated with the use case data
+  DeviceRemoteObject* const dr = FEATURE_REMOTE_GET_DEVICE(FEATURE_REMOTE_OBJECT(self));
+
+  const EventPayload payload = {
+      .ski           = DEVICE_REMOTE_GET_SKI(dr),
+      .event_type    = kEventTypeDeviceChange,
+      .change_type   = kElementChangeUpdate,
+      .device        = dr,
+      .feature       = self,
+      .function_data = new_data,
+      .function_type = kFunctionTypeNodeManagementUseCaseData,
+  };
+
+  EventPublish(&payload);
+
+  const UseCaseInformationListDataType* const use_case_data_new = (const UseCaseInformationListDataType*)
+      FeatureRemoteGetData(FEATURE_REMOTE_OBJECT(self), kFunctionTypeNodeManagementUseCaseData);
+  return UpdateUseCaseData(nmr, use_case_data_new);
 }
 
 void Destruct(FeatureObject* self) {
