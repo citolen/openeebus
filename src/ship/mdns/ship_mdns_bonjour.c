@@ -220,7 +220,7 @@ static void MdnsBrowseServicesCallback(
     void* ctx
 );
 static void MdnsBrowseServices(Mdns* self);
-static int MdnsPrepareFdSet(const Mdns* mdns, fd_set* readfds, int* browse_fd, int* register_fd);
+static int MdnsPrepareSockFd(DNSServiceRef service_ref, fd_set* readfds, int* max_fd);
 static void MdnsDispatchReadyFds(Mdns* mdns, const fd_set* readfds, int browse_fd, int register_fd);
 static void MdnsNotifyFoundEntries(Mdns* mdns);
 static void* MdnsBrowserLoop(void* parameters);
@@ -659,48 +659,22 @@ static void MdnsBrowseServices(Mdns* self) {
   }
 }
 
-static int MdnsPrepareFdSet(const Mdns* mdns, fd_set* readfds, int* browse_fd, int* register_fd) {
-  FD_ZERO(readfds);
-  int maxfd = -1;
-
-  *browse_fd = -1;
-  if (mdns->dns_service_browser_ref != NULL) {
-    *browse_fd = DNSServiceRefSockFD(mdns->dns_service_browser_ref);
-    if (*browse_fd >= 0) {
-      FD_SET(*browse_fd, readfds);
-      if (*browse_fd > maxfd) {
-        maxfd = *browse_fd;
-      }
-    }
+static int MdnsPrepareSockFd(DNSServiceRef service_ref, fd_set* readfds, int* max_fd) {
+  if (service_ref == NULL) {
+    return -1;
   }
 
-  *register_fd = -1;
-  if (mdns->dns_service_register_ref != NULL) {
-    *register_fd = DNSServiceRefSockFD(mdns->dns_service_register_ref);
-    if (*register_fd >= 0) {
-      FD_SET(*register_fd, readfds);
-      if (*register_fd > maxfd) {
-        maxfd = *register_fd;
-      }
-    }
+  const int fd = DNSServiceRefSockFD(service_ref);
+  if (fd < 0) {
+    return -1;
   }
 
-  for (size_t i = 0; i < VectorGetSize(mdns->active_resolves); ++i) {
-    ActiveResolveEntry* const resolve = (ActiveResolveEntry*)VectorGetElement(mdns->active_resolves, i);
-    if ((resolve == NULL) || (resolve->service_ref == NULL)) {
-      continue;
-    }
-
-    int fd = DNSServiceRefSockFD(resolve->service_ref);
-    if (fd >= 0) {
-      FD_SET(fd, readfds);
-      if (fd > maxfd) {
-        maxfd = fd;
-      }
-    }
+  FD_SET(fd, readfds);
+  if (fd > *max_fd) {
+    *max_fd = fd;
   }
 
-  return maxfd;
+  return fd;
 }
 
 static void MdnsDispatchReadyFds(Mdns* mdns, const fd_set* readfds, int browse_fd, int register_fd) {
@@ -763,9 +737,18 @@ static void* MdnsBrowserLoop(void* parameters) {
     }
 
     fd_set readfds;
-    int browse_fd   = -1;
-    int register_fd = -1;
-    const int maxfd = MdnsPrepareFdSet(mdns, &readfds, &browse_fd, &register_fd);
+    FD_ZERO(&readfds);
+
+    int maxfd       = -1;
+    int browse_fd   = MdnsPrepareSockFd(mdns->dns_service_browser_ref, &readfds, &maxfd);
+    int register_fd = MdnsPrepareSockFd(mdns->dns_service_register_ref, &readfds, &maxfd);
+
+    for (size_t i = 0; i < VectorGetSize(mdns->active_resolves); ++i) {
+      ActiveResolveEntry* const resolve = (ActiveResolveEntry*)VectorGetElement(mdns->active_resolves, i);
+      if ((resolve != NULL) && (resolve->service_ref != NULL)) {
+        MdnsPrepareSockFd(resolve->service_ref, &readfds, &maxfd);
+      }
+    }
 
     struct timeval tv = select_timeout;
     int n             = select(maxfd + 1, &readfds, NULL, NULL, &tv);
