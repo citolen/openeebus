@@ -69,7 +69,6 @@
 //     txtvers=1 id=NIBE-06920619238006 register=false model=nibe-n type=ControlBox brand=NIBE
 
 #include <errno.h>
-#include <stdatomic.h>
 #ifdef _WIN32
 // clang-format off
 #include <winsock2.h>
@@ -149,7 +148,7 @@ struct Mdns {
   Vector* active_resolves;
   Vector* found_entries;
 
-  atomic_bool cancel;
+  bool cancel;
 };
 
 #define MDNS(obj) ((Mdns*)(obj))
@@ -262,7 +261,7 @@ void MdnsConstruct(
   self->found_entries            = VectorCreateWithDeallocator(MdnsEntryDeallocator);
   self->active_resolves          = VectorCreateWithDeallocator(MdnsActiveResolveEntryDeallocator);
 
-  atomic_store(&self->cancel, false);
+  self->cancel = false;
 
   // Seed random number generator
   srand((int)time(NULL));
@@ -725,7 +724,7 @@ static void* MdnsBrowserLoop(void* parameters) {
 
   MdnsBrowseServices(mdns);
 
-  while (!atomic_load(&mdns->cancel)) {
+  while (!mdns->cancel) {
     if (mdns->dns_service_browser_ref == NULL) {
       MDNS_DEBUG_PRINTF("No browse ref to process!\n");
       break;
@@ -886,14 +885,15 @@ static void DeregisterService(ShipMdnsObject* self) {
 static void Stop(ShipMdnsObject* self) {
   Mdns* const mdns = MDNS(self);
 
-  atomic_store(&mdns->cancel, true);
+  mdns->cancel = true;
 
-  DeregisterService(self);
   if (mdns->thread != NULL) {
     EEBUS_THREAD_JOIN(mdns->thread);
     EebusThreadDelete(mdns->thread);
     mdns->thread = NULL;
   }
+
+  DeregisterService(self);
 }
 
 static void SetAutoaccept(ShipMdnsObject* self, bool autoaccept) {
