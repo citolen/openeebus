@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  hpsrv = HpsrvOpen(port, remote_ski, tls_cert);
+  hpsrv = HpsrvOpen(port, "auto", tls_cert);
   if (hpsrv == NULL) {
     printf("Failed to open heat pump EEBUS service!\n");
     return -1;
