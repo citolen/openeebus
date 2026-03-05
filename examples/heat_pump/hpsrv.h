@@ -40,7 +40,7 @@ struct HpsrvObject {
 /**
  * @brief Create the EEBUS Heat Pump Service instance
  * @param port Port to be used in mDNS server
- * @param remote_ski Remote device SKI which is allowed to connect to
+ * @param role Role "client", "server" or "auto" to be used in SHIP connection
  * @param tls_certificate TLS Certificate object containing the certificate and private key
  * @return Pointer to the EEBUS Heat Pump Service instance
  */

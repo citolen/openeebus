@@ -129,8 +129,6 @@ struct EebusServiceConfig {
  * @param device_model Device model
  * @param serial_number Device serial number
  * @param device_type Device type
- * @param serial_number Device serial number
- * @param device_type Device type
  * @param port Port (pass 0 to switch to default port)
  * @return EebusServiceConfig instance created on success, NULL on failure
  */
