@@ -45,13 +45,20 @@ static void OnRemoteEntityConnect(EgLpListenerObject* self, const EntityAddressT
 static void OnRemoteEntityDisconnect(EgLpListenerObject* self, const EntityAddressType* entity_addr);
 static void OnPowerLimitReceive(
     EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
     const ScaledValue* power_limit,
     const DurationType* duration,
     bool is_active
 );
-static void OnFailsafePowerLimitReceive(EgLpListenerObject* self, const ScaledValue* power_limit);
-static void OnFailsafeDurationReceive(EgLpListenerObject* self, const DurationType* duration);
-static void OnHeartbeatReceive(EgLpListenerObject* self, uint64_t heartbeat_counter);
+static void OnFailsafePowerLimitReceive(
+    EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
+    const ScaledValue* power_limit
+);
+static void
+OnFailsafeDurationReceive(EgLpListenerObject* self, const EntityAddressType* entity_addr, const DurationType* duration);
+static void
+OnHeartbeatReceive(EgLpListenerObject* self, const EntityAddressType* entity_addr, uint64_t heartbeat_counter);
 
 static const EgLpListenerInterface eg_lpc_listener_methods = {
     .destruct                        = Destruct,
@@ -100,31 +107,44 @@ void OnRemoteEntityDisconnect(EgLpListenerObject* self, const EntityAddressType*
 
 void OnPowerLimitReceive(
     EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
     const ScaledValue* power_limit,
     const EebusDuration* duration,
     bool is_active
 ) {
   UNUSED(self);
+  UNUSED(entity_addr);
 
   ScaledValuePrint("EG LPC Power Limit received %sW, ", power_limit);
   EebusDurationPrint("duration = %s, ", duration);
   printf("active = %s\n", is_active ? "true" : "false");
 }
 
-void OnFailsafePowerLimitReceive(EgLpListenerObject* self, const ScaledValue* power_limit) {
+void OnFailsafePowerLimitReceive(
+    EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
+    const ScaledValue* power_limit
+) {
   UNUSED(self);
+  UNUSED(entity_addr);
 
   ScaledValuePrint("EG LPC Failsafe Active Power Limit received:  %sW\n", power_limit);
 }
 
-void OnFailsafeDurationReceive(EgLpListenerObject* self, const DurationType* duration) {
+void OnFailsafeDurationReceive(
+    EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
+    const DurationType* duration
+) {
   UNUSED(self);
+  UNUSED(entity_addr);
 
   EebusDurationPrint("EG LPC Failsafe Duration Minimum received: %s\n", duration);
 }
 
-void OnHeartbeatReceive(EgLpListenerObject* self, uint64_t heartbeat_counter) {
+void OnHeartbeatReceive(EgLpListenerObject* self, const EntityAddressType* entity_addr, uint64_t heartbeat_counter) {
   UNUSED(self);
+  UNUSED(entity_addr);
 
   printf("EG LPC Heartbeat received, counter = %" PRIu64 "\n", heartbeat_counter);
 }

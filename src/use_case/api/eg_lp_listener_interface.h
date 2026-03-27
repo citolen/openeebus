@@ -36,13 +36,26 @@ struct EgLpListenerInterface {
   void (*on_remote_entity_disconnect)(EgLpListenerObject* self, const EntityAddressType* entity_addr);
   void (*on_power_limit_receive)(
       EgLpListenerObject* self,
+      const EntityAddressType* entity_addr,
       const ScaledValue* power_limit,
       const DurationType* duration,
       bool is_active
   );
-  void (*on_failsafe_power_limit_receive)(EgLpListenerObject* self, const ScaledValue* power_limit);
-  void (*on_failsafe_duration_receive)(EgLpListenerObject* self, const DurationType* duration);
-  void (*on_heartbeat_receive)(EgLpListenerObject* self, uint64_t heartbeat_counter);
+  void (*on_failsafe_power_limit_receive)(
+      EgLpListenerObject* self,
+      const EntityAddressType* entity_addr,
+      const ScaledValue* power_limit
+  );
+  void (*on_failsafe_duration_receive)(
+      EgLpListenerObject* self,
+      const EntityAddressType* entity_addr,
+      const DurationType* duration
+  );
+  void (*on_heartbeat_receive)(
+      EgLpListenerObject* self,
+      const EntityAddressType* entity_addr,
+      uint64_t heartbeat_counter
+  );
 };
 
 /**
@@ -82,26 +95,26 @@ struct EgLpListenerObject {
 /**
  * @brief EG LP Listener On Power Limit Receive caller definition
  */
-#define EG_LP_LISTENER_ON_POWER_LIMIT_RECEIVE(obj, power_limit, duration, is_active) \
-  (EG_LP_LISTENER_INTERFACE(obj)->on_power_limit_receive(obj, power_limit, duration, is_active))
+#define EG_LP_LISTENER_ON_POWER_LIMIT_RECEIVE(obj, entity_addr, power_limit, duration, is_active) \
+  (EG_LP_LISTENER_INTERFACE(obj)->on_power_limit_receive(obj, entity_addr, power_limit, duration, is_active))
 
 /**
  * @brief EG LP Listener On Failsafe Power Limit Receive caller definition
  */
-#define EG_LP_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(obj, power_limit) \
-  (EG_LP_LISTENER_INTERFACE(obj)->on_failsafe_power_limit_receive(obj, power_limit))
+#define EG_LP_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(obj, entity_addr, power_limit) \
+  (EG_LP_LISTENER_INTERFACE(obj)->on_failsafe_power_limit_receive(obj, entity_addr, power_limit))
 
 /**
  * @brief EG LP Listener On Failsafe Duration Receive caller definition
  */
-#define EG_LP_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(obj, duration) \
-  (EG_LP_LISTENER_INTERFACE(obj)->on_failsafe_duration_receive(obj, duration))
+#define EG_LP_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(obj, entity_addr, duration) \
+  (EG_LP_LISTENER_INTERFACE(obj)->on_failsafe_duration_receive(obj, entity_addr, duration))
 
 /**
  * @brief EG LP Listener On Heartbeat Receive caller definition
  */
-#define EG_LP_LISTENER_ON_HEARTBEAT_RECEIVE(obj, heartbeat_counter) \
-  (EG_LP_LISTENER_INTERFACE(obj)->on_heartbeat_receive(obj, heartbeat_counter))
+#define EG_LP_LISTENER_ON_HEARTBEAT_RECEIVE(obj, entity_addr, heartbeat_counter) \
+  (EG_LP_LISTENER_INTERFACE(obj)->on_heartbeat_receive(obj, entity_addr, heartbeat_counter))
 
 #ifdef __cplusplus
 }

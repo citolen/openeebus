@@ -182,7 +182,13 @@ void OnLoadControlLimitDataUpdate(EgLpUseCase* self, const EventPayload* payload
 
   EebusError ret = EgLpGetActivePowerLimitInternal(self, entity_addr, &limit);
   if (ret == kEebusErrorOk) {
-    EG_LP_LISTENER_ON_POWER_LIMIT_RECEIVE(self->eg_lp_listener, &limit.value, &limit.duration, limit.is_active);
+    EG_LP_LISTENER_ON_POWER_LIMIT_RECEIVE(
+        self->eg_lp_listener,
+        entity_addr,
+        &limit.value,
+        &limit.duration,
+        limit.is_active
+    );
   }
 }
 
@@ -221,7 +227,7 @@ void OnConfigurationDataUpdate(const EgLpUseCase* self, const EventPayload* payl
     ScaledValue power_limit = {0};
     const EebusError err    = EgLpGetFailsafeActivePowerLimitInternal(self, entity_addr, &power_limit);
     if (err == kEebusErrorOk) {
-      EG_LP_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(self->eg_lp_listener, &power_limit);
+      EG_LP_LISTENER_ON_FAILSAFE_POWER_LIMIT_RECEIVE(self->eg_lp_listener, entity_addr, &power_limit);
     }
   }
 
@@ -234,7 +240,7 @@ void OnConfigurationDataUpdate(const EgLpUseCase* self, const EventPayload* payl
     const EebusError err  = EgLpGetFailsafeDurationMinimumInternal(self, entity_addr, &duration);
 
     if (err == kEebusErrorOk) {
-      EG_LP_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(self->eg_lp_listener, &duration);
+      EG_LP_LISTENER_ON_FAILSAFE_DURATION_RECEIVE(self->eg_lp_listener, entity_addr, &duration);
     }
   }
 }
@@ -250,7 +256,8 @@ void OnHeartbeat(const EgLpUseCase* self, const EventPayload* payload) {
   }
 
   if (self->eg_lp_listener != NULL) {
-    EG_LP_LISTENER_ON_HEARTBEAT_RECEIVE(self->eg_lp_listener, *data->heartbeat_counter);
+    const EntityAddressType* const entity_addr = ENTITY_GET_ADDRESS(ENTITY_OBJECT(payload->entity));
+    EG_LP_LISTENER_ON_HEARTBEAT_RECEIVE(self->eg_lp_listener, entity_addr, *data->heartbeat_counter);
   }
 }
 
