@@ -14,13 +14,20 @@ static void OnRemoteEntityConnect(EgLpListenerObject* self, const EntityAddressT
 static void OnRemoteEntityDisconnect(EgLpListenerObject* self, const EntityAddressType* entity_addr);
 static void OnPowerLimitReceive(
     EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
     const ScaledValue* power_limit,
     const DurationType* duration,
     bool is_active
 );
-static void OnFailsafePowerLimitReceive(EgLpListenerObject* self, const ScaledValue* power_limit);
-static void OnFailsafeDurationReceive(EgLpListenerObject* self, const DurationType* duration);
-static void OnHeartbeatReceive(EgLpListenerObject* self, uint64_t heartbeat_counter);
+static void OnFailsafePowerLimitReceive(
+    EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
+    const ScaledValue* power_limit
+);
+static void
+OnFailsafeDurationReceive(EgLpListenerObject* self, const EntityAddressType* entity_addr, const DurationType* duration);
+static void
+OnHeartbeatReceive(EgLpListenerObject* self, const EntityAddressType* entity_addr, uint64_t heartbeat_counter);
 
 static const EgLpListenerInterface eg_lp_listener_methods = {
     .destruct                        = Destruct,
@@ -78,6 +85,7 @@ void OnRemoteEntityDisconnect(EgLpListenerObject* self, const EntityAddressType*
 
 void OnPowerLimitReceive(
     EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
     const ScaledValue* power_limit,
     const DurationType* duration,
     bool is_active
@@ -86,17 +94,25 @@ void OnPowerLimitReceive(
   mock->gmock->OnPowerLimitReceive(self, power_limit, duration, is_active);
 }
 
-void OnFailsafePowerLimitReceive(EgLpListenerObject* self, const ScaledValue* power_limit) {
+void OnFailsafePowerLimitReceive(
+    EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
+    const ScaledValue* power_limit
+) {
   EgLpListenerMock* const mock = EG_LP_LISTENER_MOCK(self);
   mock->gmock->OnFailsafePowerLimitReceive(self, power_limit);
 }
 
-void OnFailsafeDurationReceive(EgLpListenerObject* self, const DurationType* duration) {
+void OnFailsafeDurationReceive(
+    EgLpListenerObject* self,
+    const EntityAddressType* entity_addr,
+    const DurationType* duration
+) {
   EgLpListenerMock* const mock = EG_LP_LISTENER_MOCK(self);
   mock->gmock->OnFailsafeDurationReceive(self, duration);
 }
 
-void OnHeartbeatReceive(EgLpListenerObject* self, uint64_t heartbeat_counter) {
+void OnHeartbeatReceive(EgLpListenerObject* self, const EntityAddressType* entity_addr, uint64_t heartbeat_counter) {
   EgLpListenerMock* const mock = EG_LP_LISTENER_MOCK(self);
   mock->gmock->OnHeartbeatReceive(self, heartbeat_counter);
 }
