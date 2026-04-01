@@ -116,6 +116,7 @@ static bool SkiMatches(const char* ski_a, const char* ski_b);
 static void CloseShipConnection(ShipNode* self, ShipConnectionObject* sc, bool had_error);
 static bool ShipNodeFindService(ShipNode* self, MdnsEntry* found_entry);
 static void ShipNodeConnectToService(ShipNode* self, const MdnsEntry* found_entry);
+static void ShipNodeConnectToRemoteSki(ShipNode* self);
 static void* ShipNodeConnectionLoop(void* ctx);
 static int
 ShipNodeOnWebsocketServerConnectionCallback(const char* ski, WebsocketCreatorObject* websocket_creator, void* ctx);
@@ -419,6 +420,17 @@ static void ShipNodeConnectToService(ShipNode* self, const MdnsEntry* found_entr
   self->websocket_creator = NULL;
 }
 
+static void ShipNodeConnectToRemoteSki(ShipNode* self) {
+  MdnsEntry found_entry;
+  EEBUS_MUTEX_LOCK(self->mutex);
+  if (ShipNodeFindService(self, &found_entry)) {
+    ShipNodeConnectToService(self, &found_entry);
+  }
+
+  self->search_for_remote_ski = false;
+  EEBUS_MUTEX_UNLOCK(self->mutex);
+}
+
 void* ShipNodeConnectionLoop(void* ctx) {
   ShipNode* const sn             = (ShipNode*)ctx;
   ShipNodeQueueMessage queue_msg = {0};
@@ -431,20 +443,14 @@ void* ShipNodeConnectionLoop(void* ctx) {
     }
 
     if (queue_msg.type == kShipNodeQueueMsgTypeMdnsEntriesFound) {
-      MdnsEntry found_entry;
-      EEBUS_MUTEX_LOCK(sn->mutex);
-      if (ShipNodeFindService(sn, &found_entry)) {
-        ShipNodeConnectToService(sn, &found_entry);
-      }
-
-      sn->search_for_remote_ski = false;
-      EEBUS_MUTEX_UNLOCK(sn->mutex);
+      ShipNodeConnectToRemoteSki(sn);
     } else if (queue_msg.type == kShipNodeQueueMsgTypeShipConnectionClosed) {
       CloseShipConnection(sn, queue_msg.ship_connection, queue_msg.had_error);
     } else if (queue_msg.type == kShipNodeQueueMsgTypeShipUnregisterSki) {
       ShipNodeUnregisterSki(SHIP_NODE_OBJECT(sn), queue_msg.ski);
     } else if (queue_msg.type == kShipNodeQueueMsgTypeShipRegisterSki) {
       ShipNodeRegisterSki(SHIP_NODE_OBJECT(sn), queue_msg.ski, true);
+      ShipNodeConnectToRemoteSki(sn);
     }
     ShipNodeQueueMsgDeallocator(&queue_msg);
   }
