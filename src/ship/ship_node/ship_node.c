@@ -329,6 +329,10 @@ void HandleShipStateUpdate(InfoProviderObject* self, const char* ski, SmeState s
   const ShipNode* const sn = SHIP_NODE(self);
 
   SHIP_NODE_READER_ON_SHIP_STATE_UPDATE(sn->ship_node_reader, ski, state);
+
+  if (state == kDataExchange) {
+    SHIP_NODE_READER_ON_REMOTE_SKI_CONNECTED(sn->ship_node_reader, ski);
+  }
 }
 
 DataReaderObject* SetupRemoteDevice(InfoProviderObject* self, const char* ski, DataWriterObject* data_writer) {
