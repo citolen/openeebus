@@ -177,6 +177,11 @@ struct lws_context* WebsocketClientLwsContextCreate(WebsocketClient* self) {
       .fd_limit_per_thread = kFdLmitPerThread,
       .options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT | LWS_SERVER_OPTION_H2_JUST_FIX_WINDOW_UPDATE_OVERFLOW,
 
+      .client_ssl_cipher_list
+      = "ECDHE-ECDSA-AES128-GCM-SHA256:"
+        "ECDHE-ECDSA-AES128-CCM8:"
+        "ECDHE-ECDSA-AES128-SHA256",
+
       .client_ssl_cert_mem     = TLS_CERTIFICATE_GET_CERTIFICATE(self->tls_cert),
       .client_ssl_cert_mem_len = (unsigned int)TLS_CERTIFICATE_GET_CERTIFICATE_SIZE(self->tls_cert),
       .client_ssl_key_mem      = TLS_CERTIFICATE_GET_PRIVATE_KEY(self->tls_cert),
